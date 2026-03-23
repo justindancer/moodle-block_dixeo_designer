@@ -1,0 +1,69 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template block_dixeo_designer/prompt
+
+    Dixeo Course Designer Prompt Template
+
+    Example context (json):
+    {
+        "course_description": "Create a course about..."
+    }
+}}
+<div class="prompt-container d-block">
+    <h2 class="text-center mb-4">{{#str}} heading, block_dixeo_designer {{/str}}</h2>
+    <form class="generator-form p-0">
+        <div id="prompt-form" class="form-group position-relative mb-0">
+            <textarea id="course_description" name="course_description" class="form-control px-2 mb-2" placeholder="{{#str}} prompt_placeholder, block_dixeo_designer {{/str}}">{{course_description}}</textarea>
+            <div class="dropzone-message">{{#str}} draganddrop, block_dixeo_designer {{/str}}</div>
+            <input type="file" id="temp_course_files" name="temp_course_files[]" class="form-control d-none" multiple="">
+        </div>
+        <div class="side-by-side">
+            <label for="temp_course_files" class="label_course_files" title="{{#str}} attachfile, block_dixeo_designer {{/str}}">
+                <i class="fa fa-paperclip fa-2x"></i>
+            </label>
+            {{#has_template_options}}
+            <select id="templateid" name="templateid" class="custom-select" title="{{#str}} coursetemplate, block_dixeo_designer {{/str}}">
+                {{#template_options}}
+                    <option value="{{value}}"{{#selected}} selected{{/selected}}>{{label}}</option>
+                {{/template_options}}
+            </select>
+            {{/has_template_options}}
+            <div id="file_names" class="mt-2{{^hasFiles}} d-none{{/hasFiles}}" data-uploading-text="{{uploading_files}}">{{> block_dixeo_designer/filenames }}</div>
+            <div class="prompt-actions">
+                {{^hide_generate_course}}
+                <button id="generate_course" class="btn btn-primary" title="{{#str}} generate_course_tooltip, block_dixeo_designer {{/str}}" aria-label="{{#str}} generate_course_tooltip, block_dixeo_designer {{/str}}">
+                    <img src="{{config.wwwroot}}/blocks/dixeo_designer/pix/lightning.svg" alt="">
+                </button>
+                {{/hide_generate_course}}
+                <button id="generate_course_structure"
+                    class="btn btn-primary text-white"
+                    title="{{generate_structure_tooltip}}"
+                    data-existing-job="{{is_existing_job}}">
+                    <img src="{{config.wwwroot}}/blocks/dixeo_designer/pix/dixeo-white.svg" alt="">
+                    <span>{{generate_structure_label}}</span>
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+{{#js}}
+require(['block_dixeo_designer/generator'], function(Generator) {
+    Generator.init();
+});
+{{/js}}
