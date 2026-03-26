@@ -118,5 +118,58 @@ function xmldb_block_dixeo_designer_upgrade($oldversion) {
         upgrade_block_savepoint(true, 2026031400, 'dixeo_designer');
     }
 
+    if ($oldversion < 2026032126) {
+        $table = new xmldb_table('block_dixeo_designer_structure');
+
+        if ($dbman->table_exists($table)) {
+            // Keep one row per jobid (latest by timecreated, then id).
+            $jobids = $DB->get_fieldset_sql("SELECT DISTINCT jobid FROM {block_dixeo_designer_structure}");
+            foreach ($jobids as $jobid) {
+                $records = $DB->get_records('block_dixeo_designer_structure', ['jobid' => $jobid], 'timecreated DESC, id DESC');
+                if (count($records) <= 1) {
+                    continue;
+                }
+                $first = true;
+                foreach ($records as $rec) {
+                    if ($first) {
+                        $first = false;
+                        continue;
+                    }
+                    $DB->delete_records('block_dixeo_designer_structure', ['id' => $rec->id]);
+                }
+            }
+
+            $oldcomposite = new xmldb_key('jobid_version_uk', XMLDB_KEY_UNIQUE, ['jobid', 'version']);
+            $oldcompositeindex = new xmldb_index('jobid_version_uk', XMLDB_INDEX_UNIQUE, ['jobid', 'version']);
+            if ($dbman->index_exists($table, $oldcompositeindex)) {
+                $dbman->drop_key($table, $oldcomposite);
+            }
+
+            $versionfield = new xmldb_field('version');
+            if ($dbman->field_exists($table, $versionfield)) {
+                $dbman->drop_field($table, $versionfield);
+            }
+
+            // index_exists() matches columns only, not unique vs non-unique — drop legacy non-unique jobid by introspection.
+            $indexes = $DB->get_indexes('block_dixeo_designer_structure');
+            foreach ($indexes as $indexname => $index) {
+                $cols = array_values($index['columns']);
+                if (count($cols) === 1 && $cols[0] === 'jobid' && empty($index['unique'])) {
+                    $jobidx = new xmldb_index($indexname, XMLDB_INDEX_NOTUNIQUE, ['jobid']);
+                    $dbman->drop_index($table, $jobidx);
+                    break;
+                }
+            }
+
+            $jobiduk = new xmldb_key('jobid_uk', XMLDB_KEY_UNIQUE, ['jobid']);
+            $jobidukindex = new xmldb_index('jobid_uk', XMLDB_INDEX_UNIQUE, ['jobid']);
+            if (!$dbman->index_exists($table, $jobidukindex)) {
+                $dbman->add_key($table, $jobiduk);
+            }
+        }
+
+        upgrade_block_savepoint(true, 2026032126, 'dixeo_designer');
+    }
+
     return true;
 }

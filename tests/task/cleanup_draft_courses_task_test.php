@@ -132,12 +132,11 @@ final class cleanup_draft_courses_task_test extends advanced_testcase {
             'userid' => $userid,
             'description' => 'Old structure',
             'structure' => '{"course_structure":{"title":"Old"}}',
-            'version' => 'v-old',
             'timecreated' => $old,
         ]);
 
         // Task logs via mtrace; expect output so PHPUnit does not mark the test risky.
-        $this->expectOutputRegex('/Deleted 0 draft course\(s\), 1 submission\(s\), 1 structure version\(s\)\./');
+        $this->expectOutputRegex('/Deleted 0 draft course\(s\), 1 submission\(s\), 1 structure record\(s\)\./');
 
         $task = new cleanup_draft_courses_task();
         $task->execute();
@@ -170,7 +169,6 @@ final class cleanup_draft_courses_task_test extends advanced_testcase {
             'userid' => $userid,
             'description' => 'Recent structure',
             'structure' => '{"course_structure":{"title":"Recent"}}',
-            'version' => 'v-recent',
             'timecreated' => $recent,
         ]);
 

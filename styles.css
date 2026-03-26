@@ -91,6 +91,7 @@
     border-radius: 0 0 5px 5px;
     top: -1px;
     left: calc(50% - 65px);
+    opacity: 1;
 }
 
 #page-blocks-dixeo_designer-designer .dixeo-designer-block-toggle:focus {

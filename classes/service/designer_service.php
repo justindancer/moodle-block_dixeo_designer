@@ -480,7 +480,7 @@ class designer_service {
                 $decoded = json_decode($result, true);
                 $result = is_array($decoded) ? $decoded : [];
             }
-            $this->structures->save_structure_version($jobid, $userid, $submission->prompt ?? '', $result);
+            $this->structures->save_structure($jobid, $userid, $submission->prompt ?? '', $result);
         }
 
         if (!$createcourse) {

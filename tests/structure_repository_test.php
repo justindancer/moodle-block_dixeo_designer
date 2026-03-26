@@ -22,7 +22,7 @@ use advanced_testcase;
 use block_dixeo_designer\service\structure\repository;
 
 /**
- * Tests for saved structure versions (block_dixeo_designer_structure).
+ * Tests for persisted designer structure (block_dixeo_designer_structure, one row per job).
  *
  * @package    block_dixeo_designer
  * @category   test
@@ -45,15 +45,27 @@ final class structure_repository_test extends advanced_testcase {
         $this->structures = new repository();
     }
 
-    public function test_save_structure_version_inserts_record(): void {
+    public function test_save_structure_inserts_record(): void {
         $jobid = 'job-' . uniqid();
         $result = ['data' => ['title' => 'Test', 'sections' => []]];
-        $this->structures->save_structure_version($jobid, $this->user->id, 'Desc', $result);
+        $this->structures->save_structure($jobid, $this->user->id, 'Desc', $result);
         $json = $this->structures->get_latest_structure($jobid);
         $this->assertNotNull($json);
         $decoded = json_decode($json, true);
         $this->assertIsArray($decoded);
         $this->assertArrayHasKey('data', $decoded);
+    }
+
+    public function test_save_structure_updates_same_row(): void {
+        $jobid = 'job-' . uniqid();
+        $this->structures->save_structure($jobid, $this->user->id, 'A', ['course_structure' => ['title' => 'First']]);
+        $this->structures->save_structure($jobid, $this->user->id, 'B', ['course_structure' => ['title' => 'Second']]);
+
+        global $DB;
+        $records = $DB->get_records('block_dixeo_designer_structure', ['jobid' => $jobid]);
+        $this->assertCount(1, $records);
+        $decoded = json_decode(reset($records)->structure, true);
+        $this->assertSame('Second', $decoded['course_structure']['title'] ?? null);
     }
 
     public function test_get_latest_structure_returns_null_when_missing(): void {

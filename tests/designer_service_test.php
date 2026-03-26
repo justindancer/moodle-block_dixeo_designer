@@ -658,7 +658,7 @@ final class designer_service_test extends advanced_testcase {
         $submissions->set_draft_and_remote_job($sub, $course->id, 'remote-2');
 
         $structure = ['course_structure' => ['title' => 'Kept', 'sections' => []]];
-        $structures->save_structure_version($jobid, $userid, 'v1', $structure);
+        $structures->save_structure($jobid, $userid, '', $structure);
 
         $mockCourseCreation = $this->createMock(designer_course_creation_service::class);
         $mockCourseCreation->expects($this->never())->method('delete_draft_course');

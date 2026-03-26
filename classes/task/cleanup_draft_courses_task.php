@@ -76,7 +76,7 @@ class cleanup_draft_courses_task extends \core\task\scheduled_task {
         if ($deleted > 0 || $deletedsubmissions > 0 || $deletedstructures > 0) {
             mtrace(
                 "[block_dixeo_designer] Deleted {$deleted} draft course(s), " .
-                "{$deletedsubmissions} submission(s), {$deletedstructures} structure version(s)."
+                "{$deletedsubmissions} submission(s), {$deletedstructures} structure record(s)."
             );
         }
     }

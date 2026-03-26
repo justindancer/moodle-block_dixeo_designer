@@ -50,25 +50,16 @@ final class external_get_structure_test extends advanced_testcase {
         get_structure::get_structure('job-nonexistent');
     }
 
-    public function test_get_structure_returns_latest_record(): void {
+    public function test_get_structure_returns_persisted_record(): void {
         global $DB;
 
         $jobid = 'job-' . uniqid();
-        $structurejson = json_encode(['course_structure' => ['title' => 'Test Course', 'sections' => []]]);
+        $structurejson = json_encode(['course_structure' => ['title' => 'Persisted Course', 'sections' => []]]);
         $DB->insert_record('block_dixeo_designer_structure', (object) [
             'jobid' => $jobid,
             'userid' => $this->user->id,
             'description' => 'Desc',
             'structure' => $structurejson,
-            'version' => '1.0',
-            'timecreated' => time() - 100,
-        ]);
-        $DB->insert_record('block_dixeo_designer_structure', (object) [
-            'jobid' => $jobid,
-            'userid' => $this->user->id,
-            'description' => 'Desc 2',
-            'structure' => json_encode(['course_structure' => ['title' => 'Latest']]),
-            'version' => '2.0',
             'timecreated' => time(),
         ]);
 
@@ -78,6 +69,6 @@ final class external_get_structure_test extends advanced_testcase {
         $this->assertArrayHasKey('job_id', $result);
         $this->assertSame($jobid, $result['job_id']);
         $decoded = json_decode($result['structure'], true);
-        $this->assertEquals('Latest', $decoded['course_structure']['title']);
+        $this->assertEquals('Persisted Course', $decoded['course_structure']['title']);
     }
 }

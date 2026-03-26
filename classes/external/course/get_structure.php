@@ -51,7 +51,7 @@ final class get_structure extends external_api {
     }
 
     /**
-     * Get the latest structure by job ID (no versioning; single structure per job).
+     * Get the persisted structure by job ID (single row per job).
      *
      * @param string $job_id The job identifier
      * @return array Structure data
@@ -68,16 +68,7 @@ final class get_structure extends external_api {
 
         require_login();
 
-        $records = $DB->get_records(
-            'block_dixeo_designer_structure',
-            ['jobid' => $params['job_id']],
-            'timecreated DESC',
-            '*',
-            0,
-            1
-        );
-
-        $structure = reset($records);
+        $structure = $DB->get_record('block_dixeo_designer_structure', ['jobid' => $params['job_id']], '*', IGNORE_MISSING);
         if (!$structure) {
             // No DB record yet (e.g. user just arrived from generator after structure generation).
             // Fall back to completed job result from the API and persist it.
@@ -92,7 +83,7 @@ final class get_structure extends external_api {
                 $result = is_array($decoded) ? $decoded : ['course_structure' => ['title' => '', 'sections' => []]];
             }
             $structures = new \block_dixeo_designer\service\structure\repository();
-            $structures->save_structure_version($params['job_id'], (int) $USER->id, '', $result);
+            $structures->save_structure($params['job_id'], (int) $USER->id, '', $result);
             $structureJson = json_encode($result);
             return [
                 'structure' => $structureJson,

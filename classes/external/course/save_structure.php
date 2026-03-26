@@ -52,7 +52,7 @@ final class save_structure extends external_api {
     }
 
     /**
-     * Save structure (single version per job; overwrites latest).
+     * Save structure (single row per job; upsert).
      * Used only when user clicks "Create course" in the designer.
      *
      * @param string $job_id The job identifier
@@ -78,36 +78,26 @@ final class save_structure extends external_api {
             throw new \moodle_exception('invalidjson', 'block_dixeo_designer');
         }
 
-        $records = $DB->get_records(
-            'block_dixeo_designer_structure',
-            ['jobid' => $params['job_id']],
-            'timecreated DESC',
-            '*',
-            0,
-            1
-        );
+        $existing = $DB->get_record('block_dixeo_designer_structure', ['jobid' => $params['job_id']], '*', IGNORE_MISSING);
 
-        $latest = reset($records);
-
-        if ($latest) {
+        if ($existing) {
             // Check user owns this structure (or has manage capability).
-            if ($latest->userid != $USER->id) {
+            if ($existing->userid != $USER->id) {
                 require_capability('block/dixeo_designer:manage', $context);
             }
-            $DB->set_field('block_dixeo_designer_structure', 'structure', $params['structure'], ['id' => $latest->id]);
+            $DB->set_field('block_dixeo_designer_structure', 'structure', $params['structure'], ['id' => $existing->id]);
+            $DB->set_field('block_dixeo_designer_structure', 'timecreated', time(), ['id' => $existing->id]);
             return ['success' => true];
         }
 
         // No record yet (e.g. designer opened before any structure saved); insert one.
-        $record = (object) [
+        $DB->insert_record('block_dixeo_designer_structure', (object) [
             'jobid' => $params['job_id'],
             'userid' => $USER->id,
             'description' => '',
             'structure' => $params['structure'],
-            'version' => (string) time(),
             'timecreated' => time(),
-        ];
-        $DB->insert_record('block_dixeo_designer_structure', $record);
+        ]);
 
         return ['success' => true];
     }

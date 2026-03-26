@@ -922,24 +922,6 @@ define([
                     });
                 }, 2000);
             });
-        },
-
-        /**
-         * Show warning when saving from an old version
-         * @param {string} version New version number
-         */
-        showDivergentWarning: function(version) {
-            Str.get_strings([
-                {key: 'designer_divergent_save', component: 'block_dixeo_designer'},
-                {key: 'designer_divergent_message', component: 'block_dixeo_designer', param: version},
-                {key: 'designer_ok', component: 'block_dixeo_designer'}
-            ]).done(function(strings) {
-                Notification.alert(
-                    strings[0],
-                    strings[1],
-                    strings[2]
-                );
-            });
         }
     };
 

@@ -19,7 +19,7 @@ namespace block_dixeo_designer\service\structure;
 defined('MOODLE_INTERNAL') || die();
 
 /**
- * Repository for designer structure versions (block_dixeo_designer_structure).
+ * Repository for persisted designer structure (one row per job in block_dixeo_designer_structure).
  *
  * @package    block_dixeo_designer
  * @copyright  2026 Dixeo
@@ -31,7 +31,7 @@ class repository {
     private const TABLE = 'block_dixeo_designer_structure';
 
     /**
-     * Get the latest saved structure JSON for a job.
+     * Get the saved structure JSON for a job.
      *
      * @param string $jobid
      * @return string|null JSON string or null
@@ -39,43 +39,46 @@ class repository {
     public function get_latest_structure(string $jobid): ?string {
         global $DB;
 
-        $records = $DB->get_records(
-            self::TABLE,
-            ['jobid' => $jobid],
-            'timecreated DESC',
-            'structure',
-            0,
-            1
-        );
-        $record = reset($records);
+        $record = $DB->get_record(self::TABLE, ['jobid' => $jobid], 'structure', IGNORE_MISSING);
         return $record ? $record->structure : null;
     }
 
     /**
-     * Persist a structure version.
+     * Persist structure for a job (insert or update single row).
      *
      * @param string $jobid
      * @param int $userid
      * @param string $description
-     * @param array $result
+     * @param array $result Structure payload (will be JSON-encoded).
      * @return void
      */
-    public function save_structure_version(string $jobid, int $userid, string $description, array $result): void {
+    public function save_structure(string $jobid, int $userid, string $description, array $result): void {
         global $DB;
 
-        $record = (object) [
+        $now = time();
+        $json = json_encode($result);
+        $existing = $DB->get_record(self::TABLE, ['jobid' => $jobid], '*', IGNORE_MISSING);
+
+        if ($existing) {
+            $existing->userid = $userid;
+            $existing->description = $description;
+            $existing->structure = $json;
+            $existing->timecreated = $now;
+            $DB->update_record(self::TABLE, $existing);
+            return;
+        }
+
+        $DB->insert_record(self::TABLE, (object) [
             'jobid' => $jobid,
             'userid' => $userid,
             'description' => $description,
-            'structure' => json_encode($result),
-            'version' => date('YmdHis') . '-' . random_int(1000, 9999),
-            'timecreated' => time(),
-        ];
-        $DB->insert_record(self::TABLE, $record);
+            'structure' => $json,
+            'timecreated' => $now,
+        ]);
     }
 
     /**
-     * Delete all stored structure versions for a job.
+     * Delete the persisted structure row for a job.
      *
      * @param string $jobid
      * @return int Number of deleted records.

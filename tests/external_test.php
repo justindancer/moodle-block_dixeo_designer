@@ -332,7 +332,6 @@ final class external_test extends advanced_testcase {
             'userid' => $this->user->id,
             'description' => '',
             'structure' => json_encode(['course_structure' => ['title' => 'Old']]),
-            'version' => '1',
             'timecreated' => time(),
         ]);
 
