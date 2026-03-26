@@ -30,7 +30,11 @@ define([], function() {
      * @returns {number|null}
      */
     function num(row, key) {
-        const v = row[key];
+        const raw = row[key];
+        if (raw === null || raw === undefined || raw === '') {
+            return null;
+        }
+        const v = Number(raw);
         return Number.isFinite(v) ? v : null;
     }
 
@@ -55,7 +59,9 @@ define([], function() {
      * @returns {boolean}
      */
     function isMoodlePrepareActive(data) {
-        return data.moodleprepareactive === true || data.moodleprepareactive === 1;
+        return data.moodleprepareactive === true
+            || data.moodleprepareactive === 1
+            || data.moodleprepareactive === '1';
     }
 
     /**

@@ -292,6 +292,8 @@ define([
                 event.currentTarget.closest &&
                 event.currentTarget.closest('.editor-toolbar-footer')
             );
+            const isDesignerPage = window.location.pathname.indexOf('/blocks/dixeo_designer/designer.php') !== -1;
+            const isHardReset = isFooterCancel || !isDesignerPage;
             if (!generatorForm || generatorForm.classList.contains('dixeo-designer-cancel-pending')) {
                 return;
             }
@@ -313,7 +315,8 @@ define([
                 args: {
                     job_id: this.getJobId(),
                     sesskey: M.cfg.sesskey,
-                    delete_structure: isFooterCancel
+                    // Quick generation happens outside designer.php, so a cancel must hard reset.
+                    delete_structure: isHardReset
                 },
             }])[0]
             .then(function() {
@@ -342,6 +345,9 @@ define([
             event.preventDefault();
             const runId = ++this.generationRunId;
             this.structureSubmitDone = false;
+            // New run: always stop any stale pollers from previous attempts.
+            this.clearAllProgressPolls();
+            this.clearFinalizePoll();
 
             // Remember where the user initiated generation so "Generate new course"
             // can redirect back correctly after completion.
@@ -377,7 +383,9 @@ define([
                 return;
             }
 
-            if (this.progress === 0) {
+            // Ensure progress UI is visible even if stale progress leaked from an old run.
+            const promptVisible = promptContainer && !promptContainer.classList.contains('d-none');
+            if (this.progress === 0 || promptVisible) {
                 this.startProgress();
             }
 

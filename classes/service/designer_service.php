@@ -18,6 +18,8 @@ namespace block_dixeo_designer\service;
 
 defined('MOODLE_INTERNAL') || die();
 
+use block_dixeo_designer\cancellation\cancellation_context;
+use block_dixeo_designer\cancellation\cancellation_policy_resolver;
 use block_dixeo_designer\service\cache\prepare_progress_cache;
 use block_dixeo_designer\service\remote\dixeo_remote_adapter;
 use block_dixeo_designer\service\structure\repository as structure_repository;
@@ -96,6 +98,10 @@ class designer_service {
      * @return object { courseid: int, remotejobid: string }
      */
     public function start_generation(string $jobid, int $userid, string $description, ?string $templateid): object {
+        // New generation attempt must not inherit stale finalize cancellation state.
+        $finalizecache = \cache::make('block_dixeo_designer', 'finalize_progress');
+        $finalizecache->delete($jobid);
+
         $submission = $this->submissions->save_submission($jobid, $userid, $description, $templateid);
         $this->submissions->mark_status($submission, workflow_constants::SUBMISSION_STATUS_GENERATING_STRUCTURE);
 
@@ -142,6 +148,15 @@ class designer_service {
      */
     public function prepare_generation(string $jobid, int $userid, string $description, ?string $templateid): object {
         $existing = $this->submissions->get_submission($jobid);
+        $trimmeddescription = trim($description);
+        $existinghasfiles = $existing
+            && (int) $existing->userid === (int) $userid
+            && !empty($existing->id)
+            && count($this->files->get_files((int) $existing->id)) > 0;
+        if ($trimmeddescription === '' && !$existinghasfiles) {
+            throw new \moodle_exception('invalidinput', 'block_dixeo_designer');
+        }
+
         $existingCourseId = ($existing && (int) $existing->userid === (int) $userid && !empty($existing->courseid))
             ? (int) $existing->courseid
             : null;
@@ -149,7 +164,7 @@ class designer_service {
         $oldPrompt = $existing->prompt ?? null;
         $oldTemplateId = $existing->templateid ?? null;
 
-        $submission = $this->submissions->save_submission($jobid, $userid, $description, $templateid);
+        $submission = $this->submissions->save_submission($jobid, $userid, $trimmeddescription, $templateid);
         $this->submissions->mark_status($submission, workflow_constants::SUBMISSION_STATUS_SYNCING_FILES);
 
         $newPrompt = $submission->prompt ?? null;
@@ -455,10 +470,41 @@ class designer_service {
      * @param bool $createcourse
      * @return \stdClass|null
      */
-    public function finalize_course(string $jobid, int $userid, bool $createcourse): ?\stdClass {
+    public function finalize_course(string $jobid, int $userid, bool $createcourse, string $finalizemode = ''): ?\stdClass {
         $submission = $this->submissions->get_submission($jobid);
         if (!$submission || (int) $submission->userid !== $userid) {
             return null;
+        }
+
+        if ($createcourse && $finalizemode !== '') {
+            $cache = \cache::make('block_dixeo_designer', 'finalize_progress');
+            $existing = $cache->get($jobid);
+            $merged = is_array($existing) ? array_merge($existing, [
+                'generation_mode' => $finalizemode,
+                'cancelled' => false,
+                'phase' => '',
+                'section_index' => 0,
+                'section_total' => 0,
+                'module_index' => 0,
+                'module_total' => 0,
+                'courseid' => 0,
+                'coursename' => '',
+                'current_fill_jobid' => '',
+                'active_jobids' => [],
+            ]) : [
+                'generation_mode' => $finalizemode,
+                'cancelled' => false,
+                'phase' => '',
+                'section_index' => 0,
+                'section_total' => 0,
+                'module_index' => 0,
+                'module_total' => 0,
+                'courseid' => 0,
+                'coursename' => '',
+                'current_fill_jobid' => '',
+                'active_jobids' => [],
+            ];
+            $cache->set($jobid, $merged);
         }
 
         $structureJson = $this->structures->get_latest_structure($jobid);
@@ -543,12 +589,10 @@ class designer_service {
     /**
      * Cancel the current draft workflow and clean submission state.
      *
-     * Early/block cancel (no saved structure) performs rollback: draft resources are deleted,
-     * file sync is disabled, structure rows are removed, and submission row is deleted.
-     * Late/block cancel (saved structure exists) preserves draft + structure + submission to
-     * allow fast resume from existing progress.
-     * Footer cancel is a hard reset: draft + structure + submission are deleted and file sync
-     * is disabled regardless of whether structure exists.
+     * Policy is resolved via {@see cancellation_policy_resolver} from context (saved structure,
+     * footer/hard delete, quick mode). Execution order: cancel remote jobs, course cleanup
+     * (delete course, or strip generated modules and restore draft metadata), disable file sync,
+     * structure rows, submission row or draft reset. See docs/cancellation-decision-matrix.yml.
      * The finalize-progress cache keeps a cancelled flag so in-flight finalize
      * requests can observe cancellation and stop safely.
      *
@@ -566,53 +610,89 @@ class designer_service {
         $courseid = !empty($submission->courseid) ? (int) $submission->courseid : null;
         $remotejobid = !empty($submission->remotejobid) ? $submission->remotejobid : null;
         $hasstructure = $this->structures->get_latest_structure($jobid) !== null;
-        $islateblockcancel = !$deletestructure && $hasstructure;
-        $shoulddeletedraftcourse = !$islateblockcancel;
-        $shoulddisablefilesync = $deletestructure || !$hasstructure;
-        $shoulddeletesubmission = $deletestructure || !$hasstructure;
 
         $cache = \cache::make('block_dixeo_designer', 'finalize_progress');
         $progressdata = $cache->get($jobid);
+        $generationmode = is_array($progressdata) && !empty($progressdata['generation_mode'])
+            ? (string) $progressdata['generation_mode']
+            : '';
         $currentfilljobid = null;
+        $trackedjobids = [];
         if (is_array($progressdata) && !empty($progressdata['current_fill_jobid'])) {
             $currentfilljobid = $progressdata['current_fill_jobid'];
         }
+        if (is_array($progressdata) && !empty($progressdata['active_jobids']) && is_array($progressdata['active_jobids'])) {
+            $trackedjobids = $progressdata['active_jobids'];
+        }
 
-        if ($currentfilljobid !== null && $this->jobservice !== null) {
-            try {
-                $this->jobservice->cancel_job($currentfilljobid);
-            } catch (\Throwable $e) {
-                debugging('cancel_draft: failed to cancel fill job ' . $currentfilljobid . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
+        $jobstocancel = [];
+        if ($currentfilljobid !== null && $currentfilljobid !== '') {
+            $jobstocancel[] = $currentfilljobid;
+        }
+        if ($remotejobid !== null && $remotejobid !== '') {
+            $jobstocancel[] = $remotejobid;
+        }
+        foreach ($trackedjobids as $trackedjobid) {
+            if (is_string($trackedjobid) && $trackedjobid !== '') {
+                $jobstocancel[] = $trackedjobid;
+            }
+        }
+        $jobstocancel = array_values(array_unique($jobstocancel));
+
+        $ctx = new cancellation_context($hasstructure, $deletestructure, $generationmode);
+        $plan = cancellation_policy_resolver::resolve($ctx);
+
+        $mergedprogress = array_merge(is_array($progressdata) ? $progressdata : [], ['cancelled' => true]);
+        // Always reset finalize counters on cancel to avoid stale "module X/Y" from a previous run.
+        $mergedprogress['phase'] = '';
+        $mergedprogress['section_index'] = 0;
+        $mergedprogress['section_total'] = 0;
+        $mergedprogress['module_index'] = 0;
+        $mergedprogress['module_total'] = 0;
+        $mergedprogress['courseid'] = 0;
+        $mergedprogress['coursename'] = '';
+        $mergedprogress['current_fill_jobid'] = '';
+        $mergedprogress['active_jobids'] = [];
+        $cache->set($jobid, $mergedprogress);
+
+        if (!empty($jobstocancel) && $this->jobservice !== null) {
+            foreach ($jobstocancel as $jobidtocancel) {
+                try {
+                    $this->jobservice->cancel_job($jobidtocancel);
+                } catch (\Throwable $e) {
+                    debugging('cancel_draft: failed to cancel job ' . $jobidtocancel . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
+                }
             }
         }
 
-        $cache->set($jobid, array_merge(is_array($progressdata) ? $progressdata : [], ['cancelled' => true]));
-
-        if ($courseid !== null && $shoulddeletedraftcourse) {
-            $this->coursecreation->delete_draft_course($courseid);
-        }
-
-        if ($remotejobid !== null && $this->jobservice !== null) {
-            try {
-                $this->jobservice->cancel_job($remotejobid);
-            } catch (\Throwable $e) {
-                debugging('cancel_draft: failed to cancel remote job ' . $remotejobid . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
+        if ($plan->delete_draft_course && $courseid !== null) {
+            $this->coursecreation->delete_draft_course($courseid, true);
+        } else if ($plan->delete_generated_modules_only && $courseid !== null) {
+            $this->coursecreation->delete_generated_content_modules_preserving_uploads($courseid);
+            if ($plan->restore_draft_course_metadata) {
+                $this->coursecreation->restore_draft_course_metadata_after_cancel($courseid);
             }
         }
 
-        if ($shoulddisablefilesync && $courseid !== null && $this->filesyncservice !== null) {
+        if ($plan->disable_file_sync && $courseid !== null && $this->filesyncservice !== null) {
             try {
-                $this->filesyncservice->disable_sync($courseid, $userid, true);
+                $this->filesyncservice->disable_sync($courseid, $userid, $plan->remove_files_on_disable_sync);
             } catch (\Throwable $e) {
                 debugging('cancel_draft: failed to disable file sync: ' . $e->getMessage(), DEBUG_DEVELOPER);
             }
         }
 
-        if ($deletestructure || !$hasstructure) {
+        if ($plan->delete_structure_rows) {
             $this->structures->delete_by_jobid($jobid);
         }
-        if ($shoulddeletesubmission) {
+        if ($plan->delete_submission_row) {
             $this->submissions->delete_submission($jobid, $userid);
+        } else if ($plan->reset_submission_to_draft) {
+            if ($plan->delete_draft_course) {
+                $submission->courseid = null;
+            }
+            $submission->remotejobid = null;
+            $this->submissions->mark_status($submission, workflow_constants::SUBMISSION_STATUS_DRAFT);
         }
 
         return true;

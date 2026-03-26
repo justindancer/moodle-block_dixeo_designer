@@ -1,0 +1,49 @@
+# Cancellation policy matrix for designer_service::cancel_draft.
+# Implemented by cancellation_policy_resolver::resolve(); execution order in designer_service.
+
+context:
+  has_saved_structure: bool
+  delete_structure_requested: bool  # footer / explicit hard reset
+  generation_mode: string             # e.g. "quick" from finalize_progress cache
+
+plans:
+  no_structure:
+    when: "not has_saved_structure"
+    delete_structure_rows: true
+    delete_submission_row: false
+    reset_submission_to_draft: true
+    delete_draft_course: true
+    delete_generated_modules_only: false
+    restore_draft_course_metadata: false
+    disable_file_sync: true
+    remove_files_on_disable_sync: true
+    reset_quick_finalize_progress_fields: false
+
+  hard_reset:
+    when: "delete_structure_requested"
+    delete_structure_rows: true
+    delete_submission_row: false
+    reset_submission_to_draft: true
+    delete_draft_course: true
+    delete_generated_modules_only: false
+    restore_draft_course_metadata: false
+    disable_file_sync: true
+    remove_files_on_disable_sync: true
+    reset_quick_finalize_progress_fields: false
+
+  two_step_resume:
+    when: "has_saved_structure and not delete_structure_requested"
+    delete_structure_rows: false
+    delete_submission_row: false
+    reset_submission_to_draft: true
+    delete_draft_course: false
+    delete_generated_modules_only: true
+    restore_draft_course_metadata: true
+    disable_file_sync: true
+    remove_files_on_disable_sync: false
+    reset_quick_finalize_progress_fields: "generation_mode == quick"
+
+notes:
+  - "Upload file resources use course_modules.idnumber = dixeo_designer_upload; those CMs are not deleted."
+  - "Two-step resume keeps submission.courseid so prepare_generation can reuse the draft when manifest/sync allow."
+  - "Hard reset keeps submission payload (prompt/template/files), but deletes draft course + saved structure and clears courseid/remotejobid."

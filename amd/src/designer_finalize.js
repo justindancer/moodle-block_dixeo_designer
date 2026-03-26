@@ -181,7 +181,8 @@ define([
                     args: {
                         job_id: self.jobid,
                         createcourse: true,
-                        sesskey: M.cfg.sesskey
+                        sesskey: M.cfg.sesskey,
+                        finalize_mode: 'twostep'
                     }
                 }])[0].catch(function(err) {
                     self.clearFinalizePoll();

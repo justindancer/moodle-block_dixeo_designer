@@ -173,6 +173,60 @@ final class designer_course_creation_service_test extends advanced_testcase {
         $this->assertNull($created);
     }
 
+    public function test_delete_draft_course_force_deletes_even_without_draft_prefix(): void {
+        global $DB;
+
+        $course = $this->getDataGenerator()->create_course([
+            'idnumber' => '',
+        ]);
+
+        $service = new designer_course_creation_service();
+        $this->assertTrue($service->delete_draft_course((int) $course->id, true));
+
+        $this->assertFalse($DB->record_exists('course', ['id' => $course->id]));
+    }
+
+    public function test_delete_generated_content_modules_preserving_uploads_removes_other_modules_only(): void {
+        global $DB;
+
+        $dg = $this->getDataGenerator();
+        $course = $dg->create_course();
+        $upload = $dg->create_module('resource', [
+            'course' => $course->id,
+            'section' => 0,
+            'idnumber' => file_service::CM_IDNUMBER_DESIGNER_UPLOAD,
+        ]);
+        $page = $dg->create_module('page', [
+            'course' => $course->id,
+            'section' => 1,
+        ]);
+
+        $service = new designer_course_creation_service();
+        $service->delete_generated_content_modules_preserving_uploads((int) $course->id);
+
+        $this->assertTrue($DB->record_exists('course_modules', ['id' => $upload->cmid]));
+        $this->assertFalse($DB->record_exists('course_modules', ['id' => $page->cmid]));
+    }
+
+    public function test_restore_draft_course_metadata_after_cancel_sets_draft_like_fields(): void {
+        global $DB;
+
+        $course = $this->getDataGenerator()->create_course([
+            'fullname' => 'Finalized title',
+            'shortname' => 'fin-' . random_string(6),
+            'idnumber' => '',
+            'summary' => 'Was finalized',
+        ]);
+
+        $service = new designer_course_creation_service();
+        $this->assertTrue($service->restore_draft_course_metadata_after_cancel((int) $course->id));
+
+        $row = $DB->get_record('course', ['id' => $course->id], '*', MUST_EXIST);
+        $this->assertStringStartsWith(designer_course_creation_service::IDNUMBER_DRAFT_PREFIX, (string) $row->idnumber);
+        $this->assertSame(get_string('designer_draft_course_name', 'block_dixeo_designer'), $row->fullname);
+        $this->assertSame('', (string) $row->summary);
+    }
+
     public function test_relocate_designer_upload_resources_moves_tagged_modules_to_last_resources_section(): void {
         global $DB;
 

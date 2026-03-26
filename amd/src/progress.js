@@ -323,15 +323,19 @@ define([
                                     args: {
                                         job_id: self.getJobId(),
                                         createcourse: true,
-                                        sesskey: M.cfg.sesskey
+                                        sesskey: M.cfg.sesskey,
+                                        finalize_mode: 'quick'
                                     },
                                 }])[0].catch(function(err) {
+                                    if (runId !== self.generationRunId) {
+                                        return;
+                                    }
                                     self.resetProgress();
                                     Str.get_string('designer_error_finalize_failed', 'block_dixeo_designer').then(function(msg) {
                                         Notification.alert('', err.message || msg);
                                     });
                                 });
-                                self.pollFinalizeProgress();
+                                self.pollFinalizeProgress(runId);
                             } else {
                                 var structureJson = (typeof data.result === 'string')
                                     ? data.result
@@ -386,11 +390,16 @@ define([
                 }
             },
 
-            pollFinalizeProgress: function() {
+            pollFinalizeProgress: function(runId) {
                 const self = this;
+                // Defensive: avoid orphaned finalize polling loops.
+                self.clearFinalizePoll();
                 contentPhaseAnimator.reset();
                 let pollInFlight = false;
                 const poll = function() {
+                    if (runId !== undefined && runId !== null && runId !== self.generationRunId) {
+                        return;
+                    }
                     if (pollInFlight) {
                         return;
                     }
@@ -403,6 +412,9 @@ define([
                         },
                     }])[0]
                     .then(function(data) {
+                        if (runId !== undefined && runId !== null && runId !== self.generationRunId) {
+                            return;
+                        }
                         if (data.phase === PHASE_GENERATING_CONTENT) {
                             const parsed = ContentPhaseProgress.parseIndexAndTotal(data);
                             if (parsed && parsed.total > 0) {

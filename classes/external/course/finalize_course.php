@@ -41,6 +41,12 @@ final class finalize_course extends external_api {
             'job_id' => new external_value(PARAM_TEXT, 'Job id', VALUE_REQUIRED),
             'createcourse' => new external_value(PARAM_BOOL, 'Create full course (false = structure only)', VALUE_REQUIRED),
             'sesskey' => new external_value(PARAM_RAW, 'Session key', VALUE_REQUIRED),
+            'finalize_mode' => new external_value(
+                PARAM_ALPHA,
+                'Finalize source mode: quick or twostep',
+                VALUE_DEFAULT,
+                ''
+            ),
         ]);
     }
 
@@ -55,13 +61,19 @@ final class finalize_course extends external_api {
      *     coursename: string
      * }
      */
-    public static function finalize_course(string $job_id, bool $createcourse, string $sesskey): array {
+    public static function finalize_course(
+        string $job_id,
+        bool $createcourse,
+        string $sesskey,
+        string $finalize_mode = ''
+    ): array {
         global $USER;
 
         self::validate_parameters(self::finalize_course_parameters(), [
             'job_id' => $job_id,
             'createcourse' => $createcourse,
             'sesskey' => $sesskey,
+            'finalize_mode' => $finalize_mode,
         ]);
 
         $context = \context_system::instance();
@@ -74,7 +86,7 @@ final class finalize_course extends external_api {
         \core\session\manager::write_close();
 
         $service = \block_dixeo_designer\service\designer_service_factory::get_designer_service();
-        $course = $service->finalize_course($job_id, (int) $USER->id, $createcourse);
+        $course = $service->finalize_course($job_id, (int) $USER->id, $createcourse, $finalize_mode);
         if ($createcourse && (!$course || empty($course->id))) {
             $cache = \cache::make('block_dixeo_designer', 'finalize_progress');
             $progress = $cache->get($job_id);

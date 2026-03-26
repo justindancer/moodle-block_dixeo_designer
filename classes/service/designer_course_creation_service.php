@@ -87,15 +87,18 @@ class designer_course_creation_service {
      * @param int $courseid
      * @return bool
      */
-    public function delete_draft_course(int $courseid): bool {
+    public function delete_draft_course(int $courseid, bool $force = false): bool {
         global $CFG, $DB;
 
         $course = $DB->get_record('course', ['id' => $courseid], '*', IGNORE_MISSING);
         if (!$course) {
             return false;
         }
-        if (strpos($course->idnumber ?? '', self::IDNUMBER_DRAFT_PREFIX) !== 0) {
+        if (!$force && strpos($course->idnumber ?? '', self::IDNUMBER_DRAFT_PREFIX) !== 0) {
             return true;
+        }
+        if ((int) $course->id === SITEID) {
+            return false;
         }
 
         require_once($CFG->dirroot . '/course/lib.php');
@@ -206,6 +209,10 @@ class designer_course_creation_service {
      */
     private function set_finalize_progress(string $jobid, array $data): void {
         $cache = \cache::make('block_dixeo_designer', 'finalize_progress');
+        $existing = $cache->get($jobid);
+        if (is_array($existing) && !empty($existing['cancelled'])) {
+            return;
+        }
         $cache->set($jobid, $data);
     }
 
@@ -219,6 +226,9 @@ class designer_course_creation_service {
     private function merge_finalize_progress(string $jobid, array $data): void {
         $cache = \cache::make('block_dixeo_designer', 'finalize_progress');
         $existing = $cache->get($jobid);
+        if (is_array($existing) && !empty($existing['cancelled'])) {
+            return;
+        }
         $merged = is_array($existing) ? array_merge($existing, $data) : $data;
         $cache->set($jobid, $merged);
     }
@@ -469,8 +479,17 @@ class designer_course_creation_service {
             );
 
             if ($jobid !== null && $jobid !== '') {
+                $activejobids = [];
+                $cache = \cache::make('block_dixeo_designer', 'finalize_progress');
+                $existing = $cache->get($jobid);
+                if (is_array($existing) && !empty($existing['active_jobids']) && is_array($existing['active_jobids'])) {
+                    $activejobids = $existing['active_jobids'];
+                }
+                $activejobids[] = $operation->jobid;
+                $activejobids = array_values(array_unique($activejobids));
                 $this->merge_finalize_progress($jobid, [
                     'current_fill_jobid' => $operation->jobid,
+                    'active_jobids' => $activejobids,
                 ]);
             }
 
@@ -546,5 +565,82 @@ class designer_course_creation_service {
         }
 
         return get_string('designer_default_module_prompt', 'block_dixeo_designer');
+    }
+
+    /**
+     * After finalize, restore draft-like course metadata so the course can be reused for a new fill.
+     *
+     * Mirrors {@see create_draft_course()} naming/summary defaults; assigns a new draft idnumber and unique shortname.
+     *
+     * @param int $courseid
+     * @return bool False if the course row is missing.
+     */
+    public function restore_draft_course_metadata_after_cancel(int $courseid): bool {
+        global $CFG, $DB;
+
+        require_once($CFG->dirroot . '/course/lib.php');
+
+        $course = $DB->get_record('course', ['id' => $courseid], '*', IGNORE_MISSING);
+        if (!$course) {
+            return false;
+        }
+
+        $categoryid = $this->resolve_category_id();
+        $idnumber = self::IDNUMBER_DRAFT_PREFIX . gmdate('Ymd_His');
+        $basename = 'draft-' . gmdate('Ymd-His');
+        $candidate = $basename;
+        $suffix = 1;
+        while ($DB->record_exists('course', ['shortname' => $candidate])) {
+            $existingid = $DB->get_field('course', 'id', ['shortname' => $candidate]);
+            if ($existingid && (int) $existingid === $courseid) {
+                break;
+            }
+            $candidate = $basename . '-' . $suffix++;
+        }
+
+        $defaultformat = get_config('moodlecourse', 'format') ?: 'topics';
+
+        $course->fullname = $this->get_draft_course_name();
+        $course->shortname = $candidate;
+        $course->idnumber = $idnumber;
+        $course->summary = '';
+        $course->summaryformat = FORMAT_HTML;
+        $course->format = $defaultformat;
+        $course->numsections = 1;
+        $course->category = $categoryid;
+
+        update_course($course);
+        rebuild_course_cache($courseid, true);
+
+        return true;
+    }
+
+    /**
+     * Remove activity modules created during finalize; keep submission file resources (tagged idnumber).
+     *
+     * @param int $courseid
+     */
+    public function delete_generated_content_modules_preserving_uploads(int $courseid): void {
+        global $CFG, $DB;
+
+        require_once($CFG->dirroot . '/course/lib.php');
+
+        $uploadtag = submission\file_service::CM_IDNUMBER_DESIGNER_UPLOAD;
+        $cms = $DB->get_records('course_modules', ['course' => $courseid]);
+        foreach ($cms as $cm) {
+            if (($cm->idnumber ?? '') === $uploadtag) {
+                continue;
+            }
+            try {
+                course_delete_module((int) $cm->id, false);
+            } catch (\Throwable $e) {
+                debugging(
+                    'delete_generated_content_modules_preserving_uploads: failed cm ' . $cm->id . ': ' . $e->getMessage(),
+                    DEBUG_DEVELOPER
+                );
+            }
+        }
+
+        rebuild_course_cache($courseid, true);
     }
 }

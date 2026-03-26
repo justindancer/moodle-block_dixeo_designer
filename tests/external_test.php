@@ -160,7 +160,7 @@ final class external_test extends advanced_testcase {
     public function test_finalize_course_returns_course_when_createcourse_true(): void {
         $course = (object) ['id' => 10, 'fullname' => 'My Course'];
         $this->mockdesignerservice->method('finalize_course')
-            ->with('job-1', $this->user->id, true)
+            ->with('job-1', $this->user->id, true, '')
             ->willReturn($course);
 
         $result = finalize_course::finalize_course('job-1', true, $this->sesskey);
@@ -171,7 +171,7 @@ final class external_test extends advanced_testcase {
 
     public function test_finalize_course_returns_empty_when_structure_only(): void {
         $this->mockdesignerservice->method('finalize_course')
-            ->with('job-1', $this->user->id, false)
+            ->with('job-1', $this->user->id, false, '')
             ->willReturn(null);
 
         $result = finalize_course::finalize_course('job-1', false, $this->sesskey);
@@ -182,7 +182,7 @@ final class external_test extends advanced_testcase {
 
     public function test_finalize_course_throws_when_createcourse_and_service_returns_null(): void {
         $this->mockdesignerservice->method('finalize_course')
-            ->with('job-1', $this->user->id, true)
+            ->with('job-1', $this->user->id, true, '')
             ->willReturn(null);
 
         $this->expectException(\moodle_exception::class);
@@ -195,7 +195,7 @@ final class external_test extends advanced_testcase {
         $cache->set($jobid, ['cancelled' => true]);
 
         $this->mockdesignerservice->method('finalize_course')
-            ->with($jobid, $this->user->id, true)
+            ->with($jobid, $this->user->id, true, '')
             ->willReturn(null);
 
         $result = finalize_course::finalize_course($jobid, true, $this->sesskey);
