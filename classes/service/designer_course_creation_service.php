@@ -442,6 +442,9 @@ class designer_course_creation_service {
      * Whether the modulegen block is installed, not deleted, enabled, and loadable (optional queue logging).
      */
     private function is_modulegen_queue_available(): bool {
+        if (!\local_dixeo\service\plugin_installation_service::is_component_installed('block_dixeo_modulegen')) {
+            return false;
+        }
         $pm = \core_plugin_manager::instance();
         $info = $pm->get_plugin_info('block_dixeo_modulegen');
         if ($info === null || empty($info->rootdir)) {
