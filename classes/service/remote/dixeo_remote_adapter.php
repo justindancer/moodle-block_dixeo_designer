@@ -43,7 +43,6 @@ class dixeo_remote_adapter {
         return $struct->submit_generate(
             $instructions,
             $templateid,
-            null,
             (string) $courseid
         );
     }
