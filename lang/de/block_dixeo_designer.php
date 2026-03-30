@@ -43,8 +43,8 @@ $string['myaddinstance'] = 'Einen neuen Dixeo-Kursdesigner-Block zu meiner Über
 // Platform settings.
 $string['categoryname'] = 'Kategorie für erstellte Kurse';
 $string['categoryname_desc'] = 'Geben Sie den Namen der übergeordneten Kurskategorie ein, in der vom Dixeo-Kursdesigner erstellte Kurse abgelegt werden. Die Kategorie wird angelegt, falls sie noch nicht existiert.';
-$string['coursetemplate'] = 'Vorlage für die pädagogische Struktur';
-$string['coursetemplate_desc'] = 'Wählen Sie die vom Dixeo-Kursdesigner verwendete Vorlage für die pädagogische Struktur.';
+$string['coursetemplate'] = 'Standardvorlage für die pädagogische Struktur';
+$string['coursetemplate_desc'] = 'Wählen Sie die Standardvorlage für die pädagogische Struktur, die vom Dixeo-Kursdesigner verwendet wird.';
 $string['coursetemplate_none'] = 'Keine';
 $string['default_categoryname'] = 'Dixeo-Kurse';
 
