@@ -122,54 +122,37 @@ if ($ADMIN->fulltree) {
         'block_dixeo_designer/lti_maxenrolled',
         get_string('lti_maxenrolled', 'block_dixeo_designer'),
         get_string('lti_maxenrolled_desc', 'block_dixeo_designer'),
-        '25',
+        '0',
         PARAM_INT
     ));
 
-    $maildisplaychoices = [
-        '0' => get_string('emaildisplayno'),
-        '1' => get_string('emaildisplayyes'),
-        '2' => get_string('emaildisplaycourse'),
+    $yesno = [
+        '0' => get_string('no'),
+        '1' => get_string('yes'),
     ];
     $settings->add(new admin_setting_configselect(
-        'block_dixeo_designer/lti_maildisplay',
-        get_string('lti_maildisplay', 'block_dixeo_designer'),
-        get_string('lti_maildisplay_desc', 'block_dixeo_designer'),
+        'block_dixeo_designer/lti_membersync',
+        get_string('lti_membersync', 'block_dixeo_designer'),
+        get_string('lti_membersync_desc', 'block_dixeo_designer'),
         '0',
-        $maildisplaychoices
+        $yesno
     ));
 
-    $ltilangchoices = [
-        \local_dixeo\service\designer_lti_enrol_service::LANG_SAME_AS_COURSE => get_string('lti_lang_same_as_course', 'block_dixeo_designer'),
-    ] + get_string_manager()->get_list_of_translations();
+    $membersyncmodeoptions = [
+        \enrol_lti\helper::MEMBER_SYNC_ENROL_AND_UNENROL => get_string('membersyncmodeenrolandunenrol', 'enrol_lti'),
+        \enrol_lti\helper::MEMBER_SYNC_ENROL_NEW => get_string('membersyncmodeenrolnew', 'enrol_lti'),
+        \enrol_lti\helper::MEMBER_SYNC_UNENROL_MISSING => get_string('membersyncmodeunenrolmissing', 'enrol_lti'),
+    ];
     $settings->add(new admin_setting_configselect(
-        'block_dixeo_designer/lti_preferred_language',
-        get_string('lti_preferred_language', 'block_dixeo_designer'),
-        get_string('lti_preferred_language_desc', 'block_dixeo_designer'),
-        \local_dixeo\service\designer_lti_enrol_service::LANG_SAME_AS_COURSE,
-        $ltilangchoices
-    ));
-
-    $settings->add(new admin_setting_configtext(
-        'block_dixeo_designer/lti_city',
-        get_string('lti_city', 'block_dixeo_designer'),
-        get_string('lti_city_desc', 'block_dixeo_designer'),
-        '',
-        PARAM_TEXT
-    ));
-
-    $countrychoices = ['' => get_string('selectacountry') . '...'] + get_string_manager()->get_list_of_countries();
-    $settings->add(new admin_setting_configselect(
-        'block_dixeo_designer/lti_country',
-        get_string('lti_country', 'block_dixeo_designer'),
-        get_string('lti_country_desc', 'block_dixeo_designer'),
-        '',
-        $countrychoices
+        'block_dixeo_designer/lti_membersyncmode',
+        get_string('lti_membersyncmode', 'block_dixeo_designer'),
+        get_string('lti_membersyncmode_desc', 'block_dixeo_designer'),
+        (string) \enrol_lti\helper::MEMBER_SYNC_ENROL_AND_UNENROL,
+        $membersyncmodeoptions
     ));
 
     $settings->hide_if('block_dixeo_designer/lti_maxenrolled', 'block_dixeo_designer/lti_publication_enabled');
-    $settings->hide_if('block_dixeo_designer/lti_maildisplay', 'block_dixeo_designer/lti_publication_enabled');
-    $settings->hide_if('block_dixeo_designer/lti_preferred_language', 'block_dixeo_designer/lti_publication_enabled');
-    $settings->hide_if('block_dixeo_designer/lti_city', 'block_dixeo_designer/lti_publication_enabled');
-    $settings->hide_if('block_dixeo_designer/lti_country', 'block_dixeo_designer/lti_publication_enabled');
+    $settings->hide_if('block_dixeo_designer/lti_membersync', 'block_dixeo_designer/lti_publication_enabled');
+    $settings->hide_if('block_dixeo_designer/lti_membersyncmode', 'block_dixeo_designer/lti_publication_enabled');
+    $settings->hide_if('block_dixeo_designer/lti_membersyncmode', 'block_dixeo_designer/lti_membersync', 'eq', 0);
 }

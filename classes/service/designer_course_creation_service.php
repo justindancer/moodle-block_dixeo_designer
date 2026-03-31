@@ -296,36 +296,24 @@ class designer_course_creation_service {
      * @return void
      */
     private function apply_lti_publication_if_enabled(int $courseid): void {
-        global $CFG;
-
         if (!(bool) get_config('block_dixeo_designer', 'lti_publication_enabled')) {
             return;
         }
 
-        $course = get_course($courseid);
-        $langmode = get_config('block_dixeo_designer', 'lti_preferred_language');
-        if ($langmode === false || $langmode === '') {
-            $langmode = \local_dixeo\service\designer_lti_enrol_service::LANG_SAME_AS_COURSE;
-        }
-        if ($langmode === \local_dixeo\service\designer_lti_enrol_service::LANG_SAME_AS_COURSE) {
-            $resolvedlang = !empty($course->lang) ? $course->lang : $CFG->lang;
-        } else {
-            $resolvedlang = (string) $langmode;
-        }
-
         $maxraw = get_config('block_dixeo_designer', 'lti_maxenrolled');
-        $maxenrolled = ($maxraw !== false && $maxraw !== '') ? (int) $maxraw : 25;
-
-        $mailraw = get_config('block_dixeo_designer', 'lti_maildisplay');
-        $maildisplay = ($mailraw !== false && $mailraw !== '') ? (int) $mailraw : 0;
+        $maxenrolled = ($maxraw !== false && $maxraw !== '') ? (int) $maxraw : 0;
+        $membersyncraw = get_config('block_dixeo_designer', 'lti_membersync');
+        $membersync = ($membersyncraw !== false && $membersyncraw !== '') ? (int) $membersyncraw : 0;
+        $membersyncmoderaw = get_config('block_dixeo_designer', 'lti_membersyncmode');
+        $membersyncmode = ($membersyncmoderaw !== false && $membersyncmoderaw !== '')
+            ? (int) $membersyncmoderaw
+            : \enrol_lti\helper::MEMBER_SYNC_ENROL_AND_UNENROL;
 
         $ltiservice = new \local_dixeo\service\designer_lti_enrol_service();
         $ltiservice->add_lti_enrol_instance($courseid, [
             'maxenrolled' => $maxenrolled,
-            'maildisplay' => $maildisplay,
-            'lang' => $resolvedlang,
-            'city' => (string) (get_config('block_dixeo_designer', 'lti_city') ?: ''),
-            'country' => (string) (get_config('block_dixeo_designer', 'lti_country') ?: ''),
+            'membersync' => $membersync,
+            'membersyncmode' => $membersyncmode,
         ]);
     }
 
