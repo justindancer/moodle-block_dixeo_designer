@@ -33,8 +33,8 @@ $capabilities = [
         'captype' => 'write',
         'contextlevel' => CONTEXT_SYSTEM,
         'archetypes' => [
-            'editingteacher' => CAP_ALLOW,
             'manager' => CAP_ALLOW,
+            'coursecreator' => CAP_ALLOW,
         ],
 
         'clonepermissionsfrom' => 'moodle/course:create',
@@ -46,8 +46,8 @@ $capabilities = [
         'captype' => 'write',
         'contextlevel' => CONTEXT_SYSTEM,
         'archetypes' => [
-            'editingteacher' => CAP_ALLOW,
             'manager' => CAP_ALLOW,
+            'coursecreator' => CAP_ALLOW,
         ],
 
         'clonepermissionsfrom' => 'moodle/course:create',
@@ -57,10 +57,10 @@ $capabilities = [
         'riskbitmask' => RISK_XSS,
 
         'captype' => 'write',
-        'contextlevel' => CONTEXT_COURSECAT,
+        'contextlevel' => CONTEXT_SYSTEM,
         'archetypes' => [
-            'coursecreator' => CAP_ALLOW,
             'manager' => CAP_ALLOW,
+            'coursecreator' => CAP_ALLOW,
         ],
     ],
 

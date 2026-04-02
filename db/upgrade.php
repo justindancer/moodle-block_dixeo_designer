@@ -171,5 +171,14 @@ function xmldb_block_dixeo_designer_upgrade($oldversion) {
         upgrade_block_savepoint(true, 2026032126, 'dixeo_designer');
     }
 
+    if ($oldversion < 2026040200) {
+        // Sync db/access.php into the capabilities tables. Core also runs update_capabilities() via
+        // upgrade_plugins_blocks() -> upgrade_component_updated() after this file returns; this step
+        // makes the upgrade explicit in the plugin and keeps the version savepoint aligned.
+        update_capabilities('block_dixeo_designer');
+
+        upgrade_block_savepoint(true, 2026040200, 'dixeo_designer');
+    }
+
     return true;
 }
