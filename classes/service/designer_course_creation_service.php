@@ -18,6 +18,7 @@ namespace block_dixeo_designer\service;
 
 defined('MOODLE_INTERNAL') || die();
 
+use block_dixeo_designer\local\dixeo_capability;
 use block_dixeo_designer\workflow_constants;
 
 /**
@@ -118,6 +119,8 @@ class designer_course_creation_service {
         global $CFG, $DB;
 
         require_once($CFG->dirroot . '/course/lib.php');
+
+        dixeo_capability::require_generate_and_manage_activities($courseid);
 
         // API may return either:
         // - a wrapper: { course_structure: { title, sections, ... } }
@@ -327,6 +330,7 @@ class designer_course_creation_service {
      * @return void
      */
     public function enable_draft_file_sync_and_wait(int $courseid, int $userid): void {
+        dixeo_capability::require_generate_for_course($courseid);
         $filesync = \local_dixeo\external\service_factory::get_file_sync_service();
         $filesync->enable_sync($courseid, $userid);
         $filesync->trigger_sync($courseid);
@@ -343,6 +347,7 @@ class designer_course_creation_service {
      * @return void
      */
     public function enable_draft_file_sync(int $courseid, int $userid): void {
+        dixeo_capability::require_generate_for_course($courseid);
         $filesync = \local_dixeo\external\service_factory::get_file_sync_service();
         $filesync->enable_sync($courseid, $userid);
         $filesync->trigger_sync($courseid);

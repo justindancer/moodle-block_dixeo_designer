@@ -20,6 +20,7 @@ defined('MOODLE_INTERNAL') || die();
 
 use block_dixeo_designer\cancellation\cancellation_context;
 use block_dixeo_designer\cancellation\cancellation_policy_resolver;
+use block_dixeo_designer\local\dixeo_capability;
 use block_dixeo_designer\service\cache\prepare_progress_cache;
 use block_dixeo_designer\service\remote\dixeo_remote_adapter;
 use block_dixeo_designer\service\structure\repository as structure_repository;
@@ -111,7 +112,7 @@ class designer_service {
         try {
             $this->files->copy_files_to_course_resources((int) $submission->id, (int) $course->id, $userid);
             $this->coursecreation->enable_draft_file_sync_and_wait((int) $course->id, $userid);
-            $this->sync_submission_files_to_remote((int) $submission->id, $jobid);
+            $this->sync_submission_files_to_remote((int) $submission->id, $jobid, (int) $course->id);
 
             $instructions = trim($description);
             if ($instructions === '') {
@@ -445,6 +446,10 @@ class designer_service {
             ];
         }
 
+        if (!empty($submission->courseid)) {
+            dixeo_capability::require_generate_for_course((int) $submission->courseid);
+        }
+
         $jobstatus = $this->remoteapi->get_job_status($submission->remotejobid);
         $result = $jobstatus->result;
         if (is_string($result)) {
@@ -517,6 +522,9 @@ class designer_service {
             if (is_array($progress) && !empty($progress['cancelled'])) {
                 return null;
             }
+            if (!empty($submission->courseid)) {
+                dixeo_capability::require_generate_for_course((int) $submission->courseid);
+            }
             $jobstatus = $this->remoteapi->get_job_status($submission->remotejobid);
             if (!$jobstatus->is_completed() || empty($jobstatus->result)) {
                 return null;
@@ -554,7 +562,7 @@ class designer_service {
             // then sync files to remote vector store before module filling.
             $this->files->copy_files_to_course_resources((int) $submission->id, $draftcourseid, $userid);
             $this->coursecreation->enable_draft_file_sync_and_wait($draftcourseid, $userid);
-            $this->sync_submission_files_to_remote((int) $submission->id, $jobid);
+            $this->sync_submission_files_to_remote((int) $submission->id, $jobid, $draftcourseid);
         }
 
         $course = $this->coursecreation->finalize_draft_course(
@@ -705,9 +713,9 @@ class designer_service {
      * @param string $jobid
      * @return void
      */
-    private function sync_submission_files_to_remote(int $submissionid, string $jobid): void {
+    private function sync_submission_files_to_remote(int $submissionid, string $jobid, int $courseid): void {
         $files = $this->files->get_files($submissionid);
-        $this->remoteapi->sync_files_to_remote($jobid, $files);
+        $this->remoteapi->sync_files_to_remote($jobid, $files, $courseid);
     }
 
     /**

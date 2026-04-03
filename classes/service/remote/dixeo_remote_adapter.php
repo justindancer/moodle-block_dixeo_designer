@@ -18,6 +18,8 @@ namespace block_dixeo_designer\service\remote;
 
 defined('MOODLE_INTERNAL') || die();
 
+use block_dixeo_designer\local\dixeo_capability;
+
 /**
  * Adapter for Dixeo "remote API" calls used by the designer workflow.
  *
@@ -39,6 +41,7 @@ class dixeo_remote_adapter {
      * @return object Remote op object { jobid: string }
      */
     public function submit_course_structure_generation(string $instructions, ?string $templateid, int $courseid): object {
+        dixeo_capability::require_generate_for_course($courseid);
         $struct = \local_dixeo\external\service_factory::get_course_structure_service();
         return $struct->submit_generate(
             $instructions,
@@ -64,6 +67,7 @@ class dixeo_remote_adapter {
      * @return object { status, progresspercent, filestotal, filescompleted, errormessage, lastsynccompleted }
      */
     public function get_file_sync_progress(int $courseid): object {
+        dixeo_capability::require_generate_for_course($courseid);
         $filesync = \local_dixeo\external\service_factory::get_file_sync_service();
 
         // Avoid remote polling when the course is already synchronized/none.
@@ -95,9 +99,11 @@ class dixeo_remote_adapter {
      *
      * @param string $jobid
      * @param array $files Array of \stored_file instances
+     * @param int $courseid Draft course whose files are being synced
      * @return void
      */
-    public function sync_files_to_remote(string $jobid, array $files): void {
+    public function sync_files_to_remote(string $jobid, array $files, int $courseid): void {
+        dixeo_capability::require_generate_for_course($courseid);
         $client = \local_dixeo\external\service_factory::get_client();
 
         try {

@@ -282,7 +282,7 @@ final class designer_service_test extends advanced_testcase {
         $mockRemoteApi = $this->createMock(\block_dixeo_designer\service\remote\dixeo_remote_adapter::class);
         $mockRemoteApi->expects($this->once())
             ->method('sync_files_to_remote')
-            ->with($jobid, []);
+            ->with($jobid, [], 555);
 
         $service = new designer_service(
             $mockSubmissions,
