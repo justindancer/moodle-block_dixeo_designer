@@ -162,6 +162,19 @@ $string['designer_error_structure_start_failed'] = 'Could not start structure ge
 $string['designer_error_generation_failed_inline'] = 'Generation failed';
 $string['designer_error_finalize_failed'] = 'Finalize failed';
 $string['designer_error_save_structure_failed'] = 'Could not save structure';
+$string['designer_image_generate'] = 'Generate';
+$string['designer_image_generating_status'] = 'Generating image...';
+$string['designer_image_regenerate'] = 'Regenerate image';
+$string['designer_image_regenerate_dialog_title'] = 'Regenerate Image';
+$string['designer_image_regenerate_dialog_label'] = 'Describe the changes you want to apply to the image';
+$string['designer_image_regenerate_dialog_placeholder'] = 'e.g. A modern classroom with students using laptops in a bright, minimalist setting with warm natural lighting.';
+$string['designer_image_generate_prompt_required'] = 'A short description of the changes you want to apply to the image is required.';
+$string['designer_image_generate_unavailable'] = 'Image generator is not connected yet.';
+$string['designer_image_close_dialog'] = 'Close image dialog';
+$string['designer_image_finalize_notice_title'] = 'Course image still generating';
+$string['designer_image_finalize_notice_body'] = 'The course image is not ready yet. If you create the course now the image generation will continue in the background and the image will be added to the course when it is ready.';
+$string['designer_image_finalize_notice_wait'] = 'Wait';
+$string['designer_image_finalize_notice_background'] = 'Create course';
 
 // Privacy.
 $string['privacy:metadata:userid'] = 'The ID of the user accessing the LTI Consumer';

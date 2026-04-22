@@ -53,7 +53,7 @@ final class save_structure extends external_api {
 
     /**
      * Save structure (single row per job; upsert).
-     * Used only when user clicks "Create course" in the designer.
+     * Used when persisting the editor JSON (e.g. before finalize, or when landing from the generator).
      *
      * @param string $job_id The job identifier
      * @param string $structure JSON structure data
@@ -98,6 +98,9 @@ final class save_structure extends external_api {
             'structure' => $params['structure'],
             'timecreated' => time(),
         ]);
+
+        $service = \block_dixeo_designer\service\designer_service_factory::get_designer_service();
+        $service->start_structure_image_generation($params['job_id'], (int) $USER->id);
 
         return ['success' => true];
     }

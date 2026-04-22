@@ -12,17 +12,78 @@
     * strings - From AMD (expand_all, module_summary_label, module_instructions_label, etc.)
 }}
 <div class="course-overview">
-    {{#image}}
-    <div class="course-image">
-        <img src="{{image}}" alt="{{title}}" loading="lazy" width="280" height="157" decoding="async">
+    <div class="course-image {{^image}}is-loading{{/image}}" data-designer-course-image-root>
+        {{#image}}
+        <img src="{{image}}" alt="{{title}}" loading="lazy" width="280" height="157" decoding="async" data-designer-course-image>
+        {{/image}}
+        <div class="course-image-placeholder {{#image}}d-none{{/image}}" data-designer-course-image-placeholder>
+            <span class="fa fa-spinner fa-spin" aria-hidden="true"></span>
+            <span class="course-image-placeholder-label">{{#str}} designer_image_generating_status, block_dixeo_designer {{/str}}</span>
+        </div>
+        <button type="button"
+                class="course-image-regenerate-btn"
+                data-designer-image-regenerate-open
+                aria-label="{{#str}} designer_image_regenerate, block_dixeo_designer {{/str}}">
+            <i class="fa fa-sync-alt" aria-hidden="true"></i>
+        </button>
     </div>
-    {{/image}}
     <h2 class="course-title editable" data-path="title">{{title}}</h2>
     <div class="edit-controls"></div>
     {{#summary}}
     <p class="course-summary editable text-muted" data-path="summary">{{summary}}</p>
     <div class="edit-controls"></div>
     {{/summary}}
+</div>
+
+<div class="designer-image-preview-modal d-none" data-designer-image-preview-modal aria-hidden="true">
+    <div class="designer-image-preview-backdrop" data-designer-image-preview-close></div>
+    <div class="designer-image-preview-dialog" role="dialog" aria-modal="true" aria-label="{{title}}">
+        <button type="button"
+                class="designer-image-preview-close"
+                data-designer-image-preview-close
+                aria-label="{{#str}} designer_image_close_dialog, block_dixeo_designer {{/str}}">
+            <span aria-hidden="true">&times;</span>
+        </button>
+        <img src="{{image}}" alt="{{title}}" loading="lazy" decoding="async" data-designer-image-preview-img>
+    </div>
+</div>
+
+<div class="designer-image-regenerate-modal d-none" data-designer-image-regenerate-modal aria-hidden="true">
+    <div class="designer-image-regenerate-backdrop" data-designer-image-regenerate-close></div>
+    <div class="designer-image-regenerate-dialog"
+         role="dialog"
+         aria-modal="true"
+         aria-label="{{#str}} designer_image_regenerate_dialog_title, block_dixeo_designer {{/str}}">
+        <div class="designer-image-regenerate-header">
+            <h3>{{#str}} designer_image_regenerate_dialog_title, block_dixeo_designer {{/str}}</h3>
+            <button type="button"
+                    class="designer-image-regenerate-close"
+                    data-designer-image-regenerate-close
+                    aria-label="{{#str}} designer_image_close_dialog, block_dixeo_designer {{/str}}">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+        <div class="designer-image-regenerate-body">
+            <p class="designer-image-regenerate-label">{{#str}} designer_image_regenerate_dialog_label, block_dixeo_designer {{/str}}</p>
+            <textarea rows="4"
+                      class="designer-image-regenerate-prompt"
+                      data-designer-image-regenerate-prompt
+                      placeholder="{{#str}} designer_image_regenerate_dialog_placeholder, block_dixeo_designer {{/str}}"></textarea>
+            <p class="designer-image-regenerate-message d-none" data-designer-image-regenerate-message></p>
+            <div class="designer-image-regenerate-loading d-none" data-designer-image-regenerate-loading>
+                <span class="fa fa-spinner fa-spin" aria-hidden="true"></span>
+                <span>{{#str}} designer_image_generating_status, block_dixeo_designer {{/str}}</span>
+            </div>
+        </div>
+        <div class="designer-image-regenerate-actions">
+            <button type="button"
+                    class="btn btn-secondary"
+                    data-designer-image-regenerate-close>{{#str}} designer_cancel, block_dixeo_designer {{/str}}</button>
+            <button type="button"
+                    class="btn btn-primary"
+                    data-designer-image-regenerate-submit>{{#str}} designer_image_generate, block_dixeo_designer {{/str}}</button>
+        </div>
+    </div>
 </div>
 
 {{#hasSections}}

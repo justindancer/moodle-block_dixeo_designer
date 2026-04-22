@@ -104,11 +104,71 @@ define([
     },
 
     /**
+     * @returns {Promise<string>} Resolves to "wait" or "background".
+     */
+    showImageFinalizeBackgroundModal: function() {
+        return new Promise(function(resolve) {
+            var host = document.body;
+            var existing = host.querySelector('[data-designer-image-finalize-notice-modal]');
+
+            /**
+             * Wire click handlers and display the notice modal.
+             *
+             * @param {HTMLElement} modal
+             */
+            function wireAndOpen(modal) {
+                var finish = function(choice) {
+                    modal.classList.add('d-none');
+                    modal.setAttribute('aria-hidden', 'true');
+                    resolve(choice);
+                };
+                var waitBtn = modal.querySelector('[data-designer-image-finalize-notice-wait]');
+                var goBtn = modal.querySelector('[data-designer-image-finalize-notice-background]');
+                if (waitBtn) {
+                    waitBtn.onclick = function() {
+                        finish('wait');
+                    };
+                }
+                if (goBtn) {
+                    goBtn.onclick = function() {
+                        finish('background');
+                    };
+                }
+                modal.querySelectorAll('[data-designer-image-finalize-notice-dismiss]').forEach(function(el) {
+                    el.onclick = function() {
+                        finish('wait');
+                    };
+                });
+                modal.classList.remove('d-none');
+                modal.setAttribute('aria-hidden', 'false');
+            }
+
+            if (existing) {
+                wireAndOpen(existing);
+                return;
+            }
+
+            Templates.render('block_dixeo_designer/image_finalize_notice', {}).then(function(html) {
+                host.insertAdjacentHTML('beforeend', html);
+                var modal = host.querySelector('[data-designer-image-finalize-notice-modal]');
+                if (!modal) {
+                    resolve('background');
+                    return;
+                }
+                wireAndOpen(modal);
+            }).catch(function() {
+                resolve('background');
+            });
+        });
+    },
+
+    /**
      * When "Create course" is clicked: scroll top smoothly, expand block if needed,
      * show progress UI, then lock with backdrop (measured after layout).
      */
     startCreateCourseProgress: function() {
         var self = this;
+        var $btn = $('#btn-create-course');
 
         self.hasUnsavedChanges = false;
         self.suppressBeforeUnload = true;
@@ -210,15 +270,50 @@ define([
             });
         }
 
-        self.scrollPageToTopSmooth()
-            .then(function() {
-                return self.ensureDesignerBlockExpanded();
-            })
-            .then(function() {
-                requestAnimationFrame(function() {
-                    requestAnimationFrame(runFinalizeFlow);
-                });
+        /**
+         * Offer optional wait when course image is still generating, then start finalize flow.
+         *
+         * @returns {void}
+         */
+        function maybeWarnPendingImageThenProceed() {
+            Ajax.call([{
+                methodname: 'block_dixeo_designer_get_image_status',
+                args: {
+                    job_id: self.jobid,
+                    sesskey: M.cfg.sesskey
+                }
+            }])[0].then(function(resp) {
+                var st = resp && resp.status ? String(resp.status) : '';
+                if (st === 'pending' || st === 'processing') {
+                    return self.showImageFinalizeBackgroundModal().then(function(choice) {
+                        if (choice === 'wait') {
+                            self.setDesignerEditingLocked(false);
+                            $btn.prop('disabled', false);
+                            return null;
+                        }
+                        return 'go';
+                    });
+                }
+                return 'go';
+            }).catch(function() {
+                return 'go';
+            }).then(function(go) {
+                if (go !== 'go') {
+                    return;
+                }
+                self.scrollPageToTopSmooth()
+                    .then(function() {
+                        return self.ensureDesignerBlockExpanded();
+                    })
+                    .then(function() {
+                        requestAnimationFrame(function() {
+                            requestAnimationFrame(runFinalizeFlow);
+                        });
+                    });
             });
+        }
+
+        maybeWarnPendingImageThenProceed();
     },
 
     pollDesignerFinalizeProgress: function() {

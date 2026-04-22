@@ -120,6 +120,10 @@ class designer_course_creation_service {
 
         require_once($CFG->dirroot . '/course/lib.php');
 
+        if (!$DB->record_exists('course', ['id' => $courseid])) {
+            return null;
+        }
+
         dixeo_capability::require_generate_and_manage_activities($courseid);
 
         // API may return either:

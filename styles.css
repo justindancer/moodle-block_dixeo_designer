@@ -596,6 +596,184 @@
 
 #page-blocks-dixeo_designer-designer .course-overview .course-image {
     margin-bottom: var(--dixeo-structure-overview-image-gap);
+    position: relative;
+    display: inline-block;
+    width: 100%;
+    max-width: 520px;
+    min-height: 157px;
+    cursor: pointer;
+}
+
+#page-blocks-dixeo_designer-designer .course-overview .course-image img {
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+}
+
+#page-blocks-dixeo_designer-designer .course-overview .course-image.is-loading [data-designer-course-image] {
+    display: none;
+}
+
+#page-blocks-dixeo_designer-designer .course-overview .course-image-placeholder {
+    min-height: 157px;
+    border: 1px dashed var(--dixeo-designer-border-muted, #ced4da);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: var(--dixeo-designer-text-muted, #6c757d);
+}
+
+#page-blocks-dixeo_designer-designer .course-overview .course-image-regenerate-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 34px;
+    height: 34px;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.65);
+    color: #fff;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+}
+
+#page-blocks-dixeo_designer-designer .course-overview .course-image:hover .course-image-regenerate-btn,
+#page-blocks-dixeo_designer-designer .course-overview .course-image:focus-within .course-image-regenerate-btn {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+#page-blocks-dixeo_designer-designer .designer-image-preview-modal,
+#page-blocks-dixeo_designer-designer .designer-image-regenerate-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+}
+
+/* Appended to document.body (outside #page wrapper). */
+body .designer-image-finalize-notice-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+}
+
+body .designer-image-finalize-notice-modal .designer-image-regenerate-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+}
+
+body .designer-image-finalize-notice-modal .designer-image-regenerate-dialog {
+    position: relative;
+    max-width: 720px;
+    margin: 10vh auto;
+    background: #fff;
+    border-radius: 10px;
+    padding: 0;
+    overflow: hidden;
+}
+
+body .designer-image-finalize-notice-modal .designer-image-regenerate-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+}
+
+body .designer-image-finalize-notice-modal .designer-image-regenerate-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 12px 16px;
+}
+
+body .designer-image-finalize-notice-modal .designer-image-regenerate-body {
+    padding: 0 16px 16px;
+}
+
+#page-blocks-dixeo_designer-designer .designer-image-preview-backdrop,
+#page-blocks-dixeo_designer-designer .designer-image-regenerate-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+}
+
+#page-blocks-dixeo_designer-designer .designer-image-preview-dialog {
+    position: relative;
+    max-width: 94vw;
+    margin: 3vh auto;
+    height: 94vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#page-blocks-dixeo_designer-designer .designer-image-preview-dialog img {
+    max-width: 100%;
+    width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 10px;
+    background: #111;
+}
+
+#page-blocks-dixeo_designer-designer .designer-image-preview-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    border: 0;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+}
+
+#page-blocks-dixeo_designer-designer .designer-image-regenerate-dialog {
+    position: relative;
+    max-width: 720px;
+    margin: 10vh auto;
+    background: #fff;
+    border-radius: 10px;
+    padding: 0;
+    overflow: hidden;
+}
+
+#page-blocks-dixeo_designer-designer .designer-image-regenerate-header,
+#page-blocks-dixeo_designer-designer .designer-image-regenerate-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+}
+
+#page-blocks-dixeo_designer-designer .designer-image-regenerate-body {
+    padding: 0 16px 16px;
+}
+
+#page-blocks-dixeo_designer-designer .designer-image-regenerate-prompt {
+    width: 100%;
+    resize: vertical;
+    min-height: 110px;
+}
+
+#page-blocks-dixeo_designer-designer .designer-image-regenerate-close {
+    border: 0;
+    background: transparent;
+    font-size: 1.4rem;
+}
+
+#page-blocks-dixeo_designer-designer .designer-image-regenerate-loading {
+    margin-top: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
 }
 
 #page-blocks-dixeo_designer-designer .course-title {

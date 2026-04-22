@@ -84,10 +84,13 @@ final class get_structure extends external_api {
             }
             $structures = new \block_dixeo_designer\service\structure\repository();
             $structures->save_structure($params['job_id'], (int) $USER->id, '', $result);
+            $service->start_structure_image_generation($params['job_id'], (int) $USER->id);
             $structureJson = json_encode($result);
             return [
                 'structure' => $structureJson,
                 'job_id' => $params['job_id'],
+                'image_status' => 'pending',
+                'image_error' => null,
             ];
         }
 
@@ -99,6 +102,8 @@ final class get_structure extends external_api {
         return [
             'structure' => $structure->structure,
             'job_id' => $structure->jobid,
+            'image_status' => $structure->imagestatus ?? '',
+            'image_error' => $structure->imageerror ?? null,
         ];
     }
 
@@ -111,6 +116,8 @@ final class get_structure extends external_api {
         return new external_single_structure([
             'structure' => new external_value(PARAM_RAW, 'JSON structure'),
             'job_id' => new external_value(PARAM_TEXT, 'Job ID'),
+            'image_status' => new external_value(PARAM_TEXT, 'Image generation status', VALUE_OPTIONAL, ''),
+            'image_error' => new external_value(PARAM_TEXT, 'Image generation error', VALUE_OPTIONAL, null, NULL_ALLOWED),
         ]);
     }
 }

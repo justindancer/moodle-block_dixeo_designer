@@ -23,10 +23,13 @@ use block_dixeo_designer\cancellation\cancellation_policy_resolver;
 use block_dixeo_designer\local\dixeo_capability;
 use block_dixeo_designer\service\cache\prepare_progress_cache;
 use block_dixeo_designer\service\remote\dixeo_remote_adapter;
+use local_dixeo\service\course_image_writer;
+use local_dixeo\service\image_poll_manager;
 use block_dixeo_designer\service\structure\repository as structure_repository;
 use block_dixeo_designer\service\submission\file_service as submission_file_service;
 use block_dixeo_designer\service\submission\service as submission_service;
 use block_dixeo_designer\workflow_constants;
+use local_dixeo\service\image_generation_service;
 
 /**
  * Designer workflow: start generation, poll status, finalize or cancel.
@@ -59,6 +62,9 @@ class designer_service {
 
     /** @var \local_dixeo\service\file_sync_service|null */
     private $filesyncservice;
+
+    /** @var image_generation_service|null */
+    private ?image_generation_service $imageservice = null;
 
     /**
      * Constructor with optional dependencies for unit tests and workflow orchestration.
@@ -148,6 +154,8 @@ class designer_service {
      * @return object { courseid: int, noop?: bool }
      */
     public function prepare_generation(string $jobid, int $userid, string $description, ?string $templateid): object {
+        $this->cancel_existing_jobs_for_regeneration($jobid);
+
         $existing = $this->submissions->get_submission($jobid);
         $trimmeddescription = trim($description);
         $existinghasfiles = $existing
@@ -565,6 +573,8 @@ class designer_service {
             $this->sync_submission_files_to_remote((int) $submission->id, $jobid, $draftcourseid);
         }
 
+        $this->queue_finalize_course_image_tracking($jobid, $userid, $draftcourseid, $finalizemode, $result);
+
         $course = $this->coursecreation->finalize_draft_course(
             $draftcourseid,
             $result,
@@ -617,7 +627,10 @@ class designer_service {
 
         $courseid = !empty($submission->courseid) ? (int) $submission->courseid : null;
         $remotejobid = !empty($submission->remotejobid) ? $submission->remotejobid : null;
-        $hasstructure = $this->structures->get_latest_structure($jobid) !== null;
+        $structurerec = $this->structures->get_by_jobid($jobid);
+        $lateststructure = $this->structures->get_latest_structure($jobid);
+        $hasstructure = $structurerec !== null
+            || ($lateststructure !== null && $lateststructure !== '');
 
         $cache = \cache::make('block_dixeo_designer', 'finalize_progress');
         $progressdata = $cache->get($jobid);
@@ -639,6 +652,9 @@ class designer_service {
         }
         if ($remotejobid !== null && $remotejobid !== '') {
             $jobstocancel[] = $remotejobid;
+        }
+        if ($structurerec && !empty($structurerec->imagejobid)) {
+            $jobstocancel[] = (string) $structurerec->imagejobid;
         }
         foreach ($trackedjobids as $trackedjobid) {
             if (is_string($trackedjobid) && $trackedjobid !== '') {
@@ -671,6 +687,14 @@ class designer_service {
                     debugging('cancel_draft: failed to cancel job ' . $jobidtocancel . ': ' . $e->getMessage(), DEBUG_DEVELOPER);
                 }
             }
+        }
+
+        if ($structurerec) {
+            $this->structures->set_image_state($jobid, null, 'cancelled', null);
+        }
+
+        if ($courseid !== null) {
+            image_poll_manager::delete_queued_poll_tasks($courseid);
         }
 
         if ($plan->delete_draft_course && $courseid !== null) {
@@ -735,5 +759,430 @@ class designer_service {
         sort($entries);
 
         return hash('sha256', implode("\n", $entries));
+    }
+
+    /**
+     * Start async image generation for the stored structure/job.
+     *
+     * @param string $jobid
+     * @param int $userid
+     * @return array{started: bool, status: string, image: ?string, error: ?string}
+     */
+    public function start_structure_image_generation(string $jobid, int $userid): array {
+        $submission = $this->submissions->get_submission($jobid);
+        if (!$submission || (int) $submission->userid !== $userid || empty($submission->courseid)) {
+            throw new \moodle_exception('invalidinput', 'block_dixeo_designer');
+        }
+        $structure = $this->structures->get_by_jobid($jobid);
+        if (!$structure) {
+            throw new \moodle_exception('structurenotfound', 'block_dixeo_designer');
+        }
+
+        $this->cancel_image_job_if_running($structure->imagejobid ?? null);
+
+        $decoded = json_decode((string) $structure->structure, true);
+        [$payloadtitle, $payloadsummary] = is_array($decoded)
+            ? $this->resolve_image_payload_from_structure_result($decoded)
+            : [null, null];
+
+        $operation = $this->get_image_service()->submit_course_image_job(
+            (int) $submission->courseid,
+            image_generation_service::DEFAULT_SIZE,
+            image_generation_service::DEFAULT_QUALITY,
+            $payloadtitle,
+            $payloadsummary
+        );
+        $this->structures->set_image_state($jobid, (string) $operation->jobid, 'pending', null);
+        image_poll_manager::delete_queued_poll_tasks((int) $submission->courseid);
+
+        return [
+            'started' => true,
+            'status' => 'pending',
+            'image' => $this->extract_structure_image($structure->structure),
+            'error' => null,
+        ];
+    }
+
+    /**
+     * Start async image edit job using current structure image as base.
+     *
+     * @param string $jobid
+     * @param int $userid
+     * @param string $instructions
+     * @return array{started: bool, status: string, image: ?string, error: ?string}
+     */
+    public function start_structure_image_edit(string $jobid, int $userid, string $instructions): array {
+        $instructions = trim($instructions);
+        if ($instructions === '') {
+            throw new \moodle_exception('invalidinput', 'block_dixeo_designer');
+        }
+        $submission = $this->submissions->get_submission($jobid);
+        if (!$submission || (int) $submission->userid !== $userid || empty($submission->courseid)) {
+            throw new \moodle_exception('invalidinput', 'block_dixeo_designer');
+        }
+        $structure = $this->structures->get_by_jobid($jobid);
+        if (!$structure) {
+            throw new \moodle_exception('structurenotfound', 'block_dixeo_designer');
+        }
+
+        $currentimage = $this->extract_structure_image($structure->structure);
+        if (!$currentimage) {
+            throw new \moodle_exception('invalidinput', 'block_dixeo_designer');
+        }
+
+        $this->cancel_image_job_if_running($structure->imagejobid ?? null);
+
+        $imagesbase64 = [course_image_writer::image_url_to_base64($currentimage)];
+        $decoded = json_decode((string) $structure->structure, true);
+        [$payloadtitle, $payloadsummary] = is_array($decoded)
+            ? $this->resolve_image_payload_from_structure_result($decoded)
+            : [null, null];
+
+        $operation = $this->get_image_service()->submit_course_image_edit_job(
+            (int) $submission->courseid,
+            $imagesbase64,
+            $instructions,
+            image_generation_service::DEFAULT_SIZE,
+            image_generation_service::DEFAULT_QUALITY,
+            $payloadtitle,
+            $payloadsummary
+        );
+        $this->structures->set_image_state($jobid, (string) $operation->jobid, 'pending', null);
+        image_poll_manager::delete_queued_poll_tasks((int) $submission->courseid);
+
+        return [
+            'started' => true,
+            'status' => 'pending',
+            'image' => $currentimage,
+            'error' => null,
+        ];
+    }
+
+    /**
+     * Poll image generation/edit status and persist final image URL when complete.
+     *
+     * @param string $jobid
+     * @param int $userid
+     * @return array{status: string, completed: bool, failed: bool, image: ?string, error: ?string}
+     */
+    public function get_structure_image_status(string $jobid, int $userid): array {
+        $submission = $this->submissions->get_submission($jobid);
+        if (!$submission || (int) $submission->userid !== $userid) {
+            throw new \moodle_exception('invalidinput', 'block_dixeo_designer');
+        }
+        $structure = $this->structures->get_by_jobid($jobid);
+        if (!$structure) {
+            throw new \moodle_exception('structurenotfound', 'block_dixeo_designer');
+        }
+
+        $image = $this->extract_structure_image($structure->structure);
+        $status = (string) ($structure->imagestatus ?? '');
+        $imagejobid = (string) ($structure->imagejobid ?? '');
+
+        if ($imagejobid === '') {
+            // Auto-start when structure has no image yet (first visit after generation).
+            if (!$image && !empty($submission->courseid)) {
+                $this->start_structure_image_generation($jobid, $userid);
+                return [
+                    'status' => 'pending',
+                    'completed' => false,
+                    'failed' => false,
+                    'image' => null,
+                    'error' => null,
+                ];
+            }
+            return [
+                'status' => $status !== '' ? $status : ($image ? 'completed' : 'idle'),
+                'completed' => (bool) $image,
+                'failed' => $status === 'failed',
+                'image' => $image,
+                'error' => $structure->imageerror ?? null,
+            ];
+        }
+
+        $jobstatus = $this->get_job_service()->get_job_status($imagejobid);
+        if ($jobstatus->is_completed()) {
+            $imageurl = $this->persist_generated_image($jobid, (array) ($jobstatus->result ?? []), (int) $userid);
+            $this->structures->set_image_state($jobid, null, 'completed', null);
+            return [
+                'status' => 'completed',
+                'completed' => true,
+                'failed' => false,
+                'image' => $imageurl,
+                'error' => null,
+            ];
+        }
+
+        if ($jobstatus->is_failed()) {
+            $error = (string) ($jobstatus->errormessage ?? get_string('designer_image_generate_unavailable', 'block_dixeo_designer'));
+            $this->structures->set_image_state($jobid, null, 'failed', $error);
+            return [
+                'status' => 'failed',
+                'completed' => false,
+                'failed' => true,
+                'image' => $image,
+                'error' => $error,
+            ];
+        }
+
+        $mappedstatus = $jobstatus->is_processing() ? 'processing' : 'pending';
+        $this->structures->set_image_state($jobid, $imagejobid, $mappedstatus, null);
+        return [
+            'status' => $mappedstatus,
+            'completed' => false,
+            'failed' => false,
+            'image' => $image,
+            'error' => null,
+        ];
+    }
+
+    /**
+     * Best-effort cancellation of stale jobs when user starts regeneration.
+     *
+     * @param string $jobid
+     * @return void
+     */
+    private function cancel_existing_jobs_for_regeneration(string $jobid): void {
+        $submission = $this->submissions->get_submission($jobid);
+        if ($submission && !empty($submission->remotejobid) && $this->jobservice !== null) {
+            try {
+                $this->jobservice->cancel_job((string) $submission->remotejobid);
+            } catch (\Throwable $e) {
+                // Ignore cancellation failure for already completed jobs.
+            }
+        }
+
+        $structure = $this->structures->get_by_jobid($jobid);
+        if ($structure && !empty($structure->imagejobid)) {
+            $this->cancel_image_job_if_running((string) $structure->imagejobid);
+            $this->structures->set_image_state($jobid, null, 'cancelled', null);
+        }
+
+        if ($submission && !empty($submission->courseid)) {
+            image_poll_manager::delete_queued_poll_tasks((int) $submission->courseid);
+        }
+    }
+
+    /**
+     * Queue background polling for course image jobs across finalize (structure row is removed after success).
+     *
+     * @param string $jobid
+     * @param int $userid
+     * @param int $draftcourseid
+     * @param string $finalizemode
+     * @param array $structureresult Structure payload (same shape as finalize_course $result); used for quick-mode image title/summary overrides.
+     * @return void
+     */
+    private function queue_finalize_course_image_tracking(
+        string $jobid,
+        int $userid,
+        int $draftcourseid,
+        string $finalizemode,
+        array $structureresult = []
+    ): void {
+        if ($draftcourseid < 1) {
+            return;
+        }
+
+        $struct = $this->structures->get_by_jobid($jobid);
+        $mode = trim($finalizemode);
+
+        if ($mode === 'quick') {
+            if ($struct && !empty($struct->imagejobid)) {
+                $this->cancel_image_job_if_running((string) $struct->imagejobid);
+            }
+            try {
+                [$payloadtitle, $payloadsummary] = $this->resolve_image_payload_from_structure_result($structureresult);
+                $operation = $this->get_image_service()->submit_course_image_job(
+                    $draftcourseid,
+                    image_generation_service::DEFAULT_SIZE,
+                    image_generation_service::DEFAULT_QUALITY,
+                    $payloadtitle,
+                    $payloadsummary
+                );
+                $imagejobid = (string) $operation->jobid;
+                if ($struct) {
+                    $this->structures->set_image_state($jobid, $imagejobid, 'pending', null);
+                }
+                image_poll_manager::queue_poll_task($draftcourseid, $imagejobid, $userid);
+            } catch (\Throwable $e) {
+                debugging('designer_service: quick finalize image submit failed: ' . $e->getMessage(), DEBUG_DEVELOPER);
+            }
+            return;
+        }
+
+        if (!$struct) {
+            return;
+        }
+
+        $imagejobid = trim((string) ($struct->imagejobid ?? ''));
+        $status = (string) ($struct->imagestatus ?? '');
+
+        // In-flight remote image job: poll until complete; the adhoc task applies bytes from the API result.
+        if ($imagejobid !== '' && !in_array($status, ['completed', 'failed', 'cancelled'], true)) {
+            image_poll_manager::queue_poll_task($draftcourseid, $imagejobid, $userid);
+            return;
+        }
+
+        // Two-step flow: after the UI persists the JPEG to pluginfile, imagejobid is empty but the
+        // structure holds the URL — copy those bytes onto the draft course overview.
+        $structureimage = $this->extract_structure_image($struct->structure);
+        if ($structureimage === null || $structureimage === '') {
+            return;
+        }
+        try {
+            $this->try_apply_designer_saved_image_to_course($draftcourseid, $structureimage, $userid);
+        } catch (\Throwable $e) {
+            debugging('designer_service: apply persisted structure image to course failed: ' . $e->getMessage(), DEBUG_DEVELOPER);
+        }
+    }
+
+    /**
+     * @param string|null $imagejobid
+     * @return void
+     */
+    private function cancel_image_job_if_running(?string $imagejobid): void {
+        if (!$imagejobid || $this->jobservice === null) {
+            return;
+        }
+        try {
+            $this->jobservice->cancel_job($imagejobid);
+        } catch (\Throwable $e) {
+            // Ignore cancellation failures.
+        }
+    }
+
+    /**
+     * @return \local_dixeo\service\job_service
+     */
+    private function get_job_service(): \local_dixeo\service\job_service {
+        if ($this->jobservice instanceof \local_dixeo\service\job_service) {
+            return $this->jobservice;
+        }
+        return \local_dixeo\external\service_factory::get_job_service();
+    }
+
+    /**
+     * @return image_generation_service
+     */
+    private function get_image_service(): image_generation_service {
+        if ($this->imageservice === null) {
+            $this->imageservice = new image_generation_service($this->get_job_service());
+        }
+        return $this->imageservice;
+    }
+
+    /**
+     * Title and summary for image API from designer structure (aligned with finalize_draft_course mapping).
+     *
+     * When the inner payload is missing or invalid, returns [null, null] so the image service uses DB fields.
+     *
+     * @param array $result Decoded structure root (may include course_structure).
+     * @return array{0: ?string, 1: ?string} Override title and summary; null pair means use course row.
+     */
+    private function resolve_image_payload_from_structure_result(array $result): array {
+        $data = $result['course_structure'] ?? $result;
+        if (!is_array($data)) {
+            return [null, null];
+        }
+
+        $title = isset($data['title']) && is_string($data['title']) ? trim($data['title']) : '';
+        if ($title === '') {
+            $title = get_string('blocktitle', 'block_dixeo_designer');
+        }
+
+        $summary = $data['summary'] ?? '';
+        $summary = is_string($summary) ? $summary : '';
+
+        return [$title, $summary];
+    }
+
+    /**
+     * @param string $structurejson
+     * @return string|null
+     */
+    private function extract_structure_image(string $structurejson): ?string {
+        $decoded = json_decode($structurejson, true);
+        if (!is_array($decoded)) {
+            return null;
+        }
+        if (!empty($decoded['course_structure']['image']) && is_string($decoded['course_structure']['image'])) {
+            return $decoded['course_structure']['image'];
+        }
+        if (!empty($decoded['image']) && is_string($decoded['image'])) {
+            return $decoded['image'];
+        }
+        return null;
+    }
+
+    /**
+     * Copy a designer-generated pluginfile image onto the course overview file area.
+     *
+     * @param int $courseid
+     * @param string $imageurl
+     * @param int $userid
+     * @return void
+     */
+    private function try_apply_designer_saved_image_to_course(int $courseid, string $imageurl, int $userid): void {
+        $file = course_image_writer::get_stored_file_from_pluginfile_url($imageurl);
+        if (!$file) {
+            return;
+        }
+        if ($file->get_component() !== 'block_dixeo_designer' || $file->get_filearea() !== 'generated_images') {
+            return;
+        }
+        $binary = $file->get_content();
+        if ($binary === '') {
+            return;
+        }
+        course_image_writer::apply_image_binary_to_course_overview($courseid, $binary, $userid);
+    }
+
+    /**
+     * Persist generated base64 image and return pluginfile URL.
+     *
+     * @param string $jobid
+     * @param array $result
+     * @param int $userid
+     * @return string
+     */
+    private function persist_generated_image(string $jobid, array $result, int $userid): string {
+        $binary = course_image_writer::extract_image_binary_from_result($result);
+        if ($binary === '') {
+            throw new \moodle_exception('designer_image_generate_unavailable', 'block_dixeo_designer');
+        }
+
+        $context = \context_system::instance();
+        $fs = get_file_storage();
+        $fs->delete_area_files($context->id, 'block_dixeo_designer', 'generated_images', $userid);
+        // Unique filename so the pluginfile URL changes each generation (avoids stale browser cache).
+        $safejob = preg_replace('/[^a-zA-Z0-9._-]+/', '_', $jobid);
+        $filename = sprintf(
+            'course-image-%s-%d-%03d.jpg',
+            $safejob,
+            time(),
+            random_int(0, 999)
+        );
+        $file = $fs->create_file_from_string([
+            'contextid' => $context->id,
+            'component' => 'block_dixeo_designer',
+            'filearea' => 'generated_images',
+            'itemid' => $userid,
+            'filepath' => '/',
+            'filename' => $filename,
+        ], $binary);
+
+        $url = \moodle_url::make_pluginfile_url(
+            $context->id,
+            'block_dixeo_designer',
+            'generated_images',
+            $userid,
+            '/',
+            $filename
+        )->out(false);
+
+        $this->structures->set_structure_image($jobid, $url);
+
+        return $url;
     }
 }

@@ -33,3 +33,51 @@ defined('MOODLE_INTERNAL') || die();
 function block_dixeo_designer_generate_job_id(): string {
     return 'd' . uniqid('', true);
 }
+
+/**
+ * Serves generated course-structure images saved in plugin file area.
+ *
+ * @param \stdClass $course
+ * @param \stdClass $birecordorcm
+ * @param \context $context
+ * @param string $filearea
+ * @param array $args
+ * @param bool $forcedownload
+ * @param array $options
+ * @return bool
+ */
+function block_dixeo_designer_pluginfile(
+    $course,
+    $birecordorcm,
+    $context,
+    string $filearea,
+    array $args,
+    bool $forcedownload,
+    array $options = []
+): bool {
+    if ($context->contextlevel !== CONTEXT_SYSTEM || $filearea !== 'generated_images') {
+        return false;
+    }
+
+    require_login();
+    require_capability('block/dixeo_designer:create', $context);
+
+    if (count($args) < 2) {
+        return false;
+    }
+
+    $itemid = (int) array_shift($args);
+    $filename = array_pop($args);
+    $filepath = '/' . implode('/', $args) . '/';
+    if ($filepath === '//') {
+        $filepath = '/';
+    }
+
+    $fs = get_file_storage();
+    $file = $fs->get_file($context->id, 'block_dixeo_designer', 'generated_images', $itemid, $filepath, $filename);
+    if (!$file || $file->is_directory()) {
+        return false;
+    }
+
+    send_stored_file($file, 60 * 60, 0, $forcedownload, $options);
+}

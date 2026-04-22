@@ -80,6 +80,7 @@ define([
         designerEditingLocked: false,
         /** Cached promise for delete-confirm strings to avoid first-click latency. */
         deleteConfirmStringsPromise: null,
+        imageStatusPollIntervalId: null,
 
         /** @type {number} Draft course id for WS language context (0 if not created yet). */
         courseId: 0,
@@ -105,6 +106,7 @@ define([
             var self = this;
             document.addEventListener(DesignerProgress.GLOBAL_UNLOCK_UI_EVENT, function() {
                 self.clearFinalizePoll();
+                self.clearImageStatusPoll();
                 self.unlockDesignerUI();
                 self.setDesignerEditingLocked(false);
                 $('#btn-create-course').prop('disabled', false);
@@ -240,6 +242,9 @@ define([
                     self.historyIndex = 0;
                     self.renderStructure();
                     self.updateUndoRedoButtons();
+                    if (!self.structure.image || (response.image_status && response.image_status !== 'completed')) {
+                        self.startImageStatusPoll();
+                    }
                 },
                 fail: function(error) {
                     Notification.exception(error);
@@ -433,11 +438,215 @@ define([
 
             // Set up drag and drop
             this.setupDragAndDrop();
+            this.bindImageInteractions();
 
             // Restore collapse state if pending (e.g., after drag-and-drop)
             if (this.pendingCollapseState) {
                 this.restoreCollapseState(this.pendingCollapseState);
                 this.pendingCollapseState = null;
+            }
+        },
+
+        clearImageStatusPoll: function() {
+            if (this.imageStatusPollIntervalId) {
+                clearInterval(this.imageStatusPollIntervalId);
+                this.imageStatusPollIntervalId = null;
+            }
+        },
+
+        startImageStatusPoll: function() {
+            var self = this;
+            this.clearImageStatusPoll();
+
+            var poll = function() {
+                Ajax.call([{
+                    methodname: 'block_dixeo_designer_get_image_status',
+                    args: {
+                        job_id: self.jobid,
+                        sesskey: M.cfg.sesskey
+                    }
+                }])[0].then(function(resp) {
+                    if (resp.image && self.structure) {
+                        self.structure.image = resp.image;
+                    }
+                    if (resp.status === 'processing' || resp.status === 'pending') {
+                        self.setImageLoadingState(true);
+                        return;
+                    }
+                    if (resp.completed) {
+                        self.setImageLoadingState(false);
+                        self.clearImageStatusPoll();
+                        self.renderStructure();
+                        return;
+                    }
+                    if (resp.failed) {
+                        self.setImageLoadingState(false);
+                        self.clearImageStatusPoll();
+                        if (resp.error) {
+                            Notification.alert('', resp.error);
+                        }
+                    }
+                }).catch(function() {
+                    // Keep polling in case transient backend errors happen.
+                });
+            };
+
+            poll();
+            this.imageStatusPollIntervalId = setInterval(poll, 2500);
+        },
+
+        setImageLoadingState: function(active) {
+            var root = document.querySelector('[data-designer-course-image-root]');
+            if (!root) {
+                return;
+            }
+            root.classList.toggle('is-loading', Boolean(active));
+            var img = root.querySelector('[data-designer-course-image]');
+            var placeholder = root.querySelector('[data-designer-course-image-placeholder]');
+            if (placeholder) {
+                // With a course image, show the placeholder only while a job is in flight (hide stale image via CSS).
+                // With no image yet, keep the placeholder visible whenever we are not in a transient "loading off" tick.
+                if (img) {
+                    placeholder.classList.toggle('d-none', !active);
+                } else {
+                    placeholder.classList.remove('d-none');
+                }
+            }
+        },
+
+        bindImageInteractions: function() {
+            var self = this;
+            var imageRoot = document.querySelector('[data-designer-course-image-root]');
+            if (!imageRoot) {
+                return;
+            }
+
+            var image = imageRoot.querySelector('[data-designer-course-image]');
+            var openRegenerate = imageRoot.querySelector('[data-designer-image-regenerate-open]');
+            var previewModal = document.querySelector('[data-designer-image-preview-modal]');
+            var previewImage = previewModal ? previewModal.querySelector('[data-designer-image-preview-img]') : null;
+            var regenerateModal = document.querySelector('[data-designer-image-regenerate-modal]');
+            var regeneratePrompt = regenerateModal
+                ? regenerateModal.querySelector('[data-designer-image-regenerate-prompt]')
+                : null;
+            var regenerateMsg = regenerateModal
+                ? regenerateModal.querySelector('[data-designer-image-regenerate-message]')
+                : null;
+            var regenerateLoading = regenerateModal
+                ? regenerateModal.querySelector('[data-designer-image-regenerate-loading]')
+                : null;
+            var regenerateSubmit = regenerateModal
+                ? regenerateModal.querySelector('[data-designer-image-regenerate-submit]')
+                : null;
+
+            if (image && previewModal && previewImage) {
+                image.addEventListener('click', function() {
+                    previewImage.src = image.src;
+                    previewModal.classList.remove('d-none');
+                    previewModal.setAttribute('aria-hidden', 'false');
+                });
+            }
+            document.querySelectorAll('[data-designer-image-preview-close]').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    if (!previewModal) {
+                        return;
+                    }
+                    previewModal.classList.add('d-none');
+                    previewModal.setAttribute('aria-hidden', 'true');
+                });
+            });
+
+            if (openRegenerate && regenerateModal) {
+                openRegenerate.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    regenerateModal.classList.remove('d-none');
+                    regenerateModal.setAttribute('aria-hidden', 'false');
+                    if (regeneratePrompt) {
+                        regeneratePrompt.focus();
+                    }
+                });
+            }
+            document.querySelectorAll('[data-designer-image-regenerate-close]').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    if (!regenerateModal) {
+                        return;
+                    }
+                    regenerateModal.classList.add('d-none');
+                    regenerateModal.setAttribute('aria-hidden', 'true');
+                });
+            });
+
+            if (regenerateSubmit) {
+                regenerateSubmit.addEventListener('click', function() {
+                    var prompt = regeneratePrompt ? regeneratePrompt.value.trim() : '';
+                    if (!prompt) {
+                        Str.get_string('designer_image_generate_prompt_required', 'block_dixeo_designer')
+                            .done(function(str) {
+                                if (regenerateMsg) {
+                                    regenerateMsg.textContent = str;
+                                    regenerateMsg.classList.remove('d-none');
+                                }
+                            });
+                        if (regeneratePrompt) {
+                            regeneratePrompt.focus();
+                        }
+                        return;
+                    }
+
+                    if (regenerateMsg) {
+                        regenerateMsg.textContent = '';
+                        regenerateMsg.classList.add('d-none');
+                    }
+                    if (regenerateLoading) {
+                        regenerateLoading.classList.remove('d-none');
+                    }
+                    regenerateSubmit.disabled = true;
+                    if (regeneratePrompt) {
+                        regeneratePrompt.disabled = true;
+                    }
+
+                    Ajax.call([{
+                        methodname: 'block_dixeo_designer_start_image_edit',
+                        args: {
+                            job_id: self.jobid,
+                            instructions: prompt,
+                            sesskey: M.cfg.sesskey
+                        }
+                    }])[0].then(function() {
+                        if (regenerateModal) {
+                            regenerateModal.classList.add('d-none');
+                            regenerateModal.setAttribute('aria-hidden', 'true');
+                        }
+                        if (regeneratePrompt) {
+                            regeneratePrompt.value = '';
+                            regeneratePrompt.disabled = false;
+                        }
+                        if (regenerateLoading) {
+                            regenerateLoading.classList.add('d-none');
+                        }
+                        regenerateSubmit.disabled = false;
+                        self.setImageLoadingState(true);
+                        self.startImageStatusPoll();
+                    }).catch(function(error) {
+                        self.setImageLoadingState(false);
+                        Str.get_string('designer_image_generate_unavailable', 'block_dixeo_designer')
+                            .done(function(fallback) {
+                                if (regenerateMsg) {
+                                    regenerateMsg.textContent =
+                                        (error && error.message) ? error.message : fallback;
+                                    regenerateMsg.classList.remove('d-none');
+                                }
+                            });
+                        if (regenerateLoading) {
+                            regenerateLoading.classList.add('d-none');
+                        }
+                        regenerateSubmit.disabled = false;
+                        if (regeneratePrompt) {
+                            regeneratePrompt.disabled = false;
+                        }
+                    });
+                });
             }
         },
 
@@ -871,6 +1080,7 @@ define([
 
             // Cleanup on page unload
             $(window).on('beforeunload', function() {
+                self.clearImageStatusPoll();
                 if (self.suppressBeforeUnload) {
                     return;
                 }

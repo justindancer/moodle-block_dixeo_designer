@@ -179,5 +179,26 @@ function xmldb_block_dixeo_designer_upgrade($oldversion) {
         upgrade_block_savepoint(true, 2026040200, 'dixeo_designer');
     }
 
+    if ($oldversion < 2026042200) {
+        $table = new xmldb_table('block_dixeo_designer_structure');
+
+        $imagejobid = new xmldb_field('imagejobid', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'structure');
+        if (!$dbman->field_exists($table, $imagejobid)) {
+            $dbman->add_field($table, $imagejobid);
+        }
+
+        $imagestatus = new xmldb_field('imagestatus', XMLDB_TYPE_CHAR, '30', null, null, null, null, 'imagejobid');
+        if (!$dbman->field_exists($table, $imagestatus)) {
+            $dbman->add_field($table, $imagestatus);
+        }
+
+        $imageerror = new xmldb_field('imageerror', XMLDB_TYPE_TEXT, null, null, null, null, null, 'imagestatus');
+        if (!$dbman->field_exists($table, $imageerror)) {
+            $dbman->add_field($table, $imageerror);
+        }
+
+        upgrade_block_savepoint(true, 2026042200, 'dixeo_designer');
+    }
+
     return true;
 }

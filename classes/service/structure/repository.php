@@ -73,8 +73,80 @@ class repository {
             'userid' => $userid,
             'description' => $description,
             'structure' => $json,
+            'imagejobid' => null,
+            'imagestatus' => null,
+            'imageerror' => null,
             'timecreated' => $now,
         ]);
+    }
+
+    /**
+     * Get full structure row for a job id.
+     *
+     * @param string $jobid
+     * @return \stdClass|null
+     */
+    public function get_by_jobid(string $jobid): ?\stdClass {
+        global $DB;
+        return $DB->get_record(self::TABLE, ['jobid' => $jobid], '*', IGNORE_MISSING) ?: null;
+    }
+
+    /**
+     * Update image generation state for a structure row.
+     *
+     * @param string $jobid
+     * @param string|null $imagejobid
+     * @param string|null $imagestatus
+     * @param string|null $imageerror
+     * @return void
+     */
+    public function set_image_state(
+        string $jobid,
+        ?string $imagejobid,
+        ?string $imagestatus,
+        ?string $imageerror = null
+    ): void {
+        global $DB;
+        $record = $DB->get_record(self::TABLE, ['jobid' => $jobid], '*', IGNORE_MISSING);
+        if (!$record) {
+            return;
+        }
+        $record->imagejobid = $imagejobid;
+        $record->imagestatus = $imagestatus;
+        $record->imageerror = $imageerror;
+        $record->timecreated = time();
+        $DB->update_record(self::TABLE, $record);
+    }
+
+    /**
+     * Merge an image URL into stored structure JSON.
+     *
+     * @param string $jobid
+     * @param string $imageurl
+     * @return bool True when row exists and was updated.
+     */
+    public function set_structure_image(string $jobid, string $imageurl): bool {
+        global $DB;
+        $record = $DB->get_record(self::TABLE, ['jobid' => $jobid], '*', IGNORE_MISSING);
+        if (!$record) {
+            return false;
+        }
+
+        $decoded = json_decode((string) $record->structure, true);
+        if (!is_array($decoded)) {
+            $decoded = [];
+        }
+
+        if (isset($decoded['course_structure']) && is_array($decoded['course_structure'])) {
+            $decoded['course_structure']['image'] = $imageurl;
+        } else {
+            $decoded['image'] = $imageurl;
+        }
+
+        $record->structure = json_encode($decoded);
+        $record->timecreated = time();
+        $DB->update_record(self::TABLE, $record);
+        return true;
     }
 
     /**

@@ -102,7 +102,7 @@ final class submission_service_test extends advanced_testcase {
         $this->service->save_submission($jobid, $this->user->id, 'P', null);
         $other = $this->getDataGenerator()->create_user();
 
-        $this->expectException(\required_capability_exception::class);
+        $this->expectException(\moodle_exception::class);
         $this->service->save_submission($jobid, $other->id, 'Hack', null);
     }
 

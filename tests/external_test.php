@@ -71,8 +71,20 @@ final class external_test extends advanced_testcase {
         $_POST['sesskey'] = $this->sesskey;
         $this->mockdesignerservice = $this->getMockBuilder(designer_service::class)
             ->disableOriginalConstructor()
-            ->onlyMethods(['start_generation', 'get_structure_status', 'finalize_course', 'cancel_draft'])
+            ->onlyMethods([
+                'start_generation',
+                'get_structure_status',
+                'finalize_course',
+                'cancel_draft',
+                'start_structure_image_generation',
+            ])
             ->getMock();
+        $this->mockdesignerservice->method('start_structure_image_generation')->willReturn([
+            'started' => true,
+            'status' => 'pending',
+            'image' => null,
+            'error' => null,
+        ]);
         designer_service_factory::set_test_designer_service($this->mockdesignerservice);
     }
 

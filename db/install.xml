@@ -31,6 +31,9 @@
         <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="User who initiated the job"/>
         <FIELD NAME="description" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
         <FIELD NAME="structure" TYPE="text" NOTNULL="true" SEQUENCE="false" COMMENT="Course structure (JSON)"/>
+        <FIELD NAME="imagejobid" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Async image generation/edit job id"/>
+        <FIELD NAME="imagestatus" TYPE="char" LENGTH="30" NOTNULL="false" SEQUENCE="false" COMMENT="Image lifecycle status: pending|processing|completed|failed|cancelled"/>
+        <FIELD NAME="imageerror" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Image generation/edit error details"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
       </FIELDS>
       <KEYS>

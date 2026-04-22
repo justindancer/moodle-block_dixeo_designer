@@ -1,0 +1,26 @@
+{{!
+    Modal: course image still generating when user chooses Create course.
+    @template block_dixeo_designer/image_finalize_notice
+}}
+<div class="designer-image-finalize-notice-modal d-none" data-designer-image-finalize-notice-modal aria-hidden="true">
+    <div class="designer-image-regenerate-backdrop" data-designer-image-finalize-notice-dismiss></div>
+    <div class="designer-image-regenerate-dialog shadow" role="dialog" aria-modal="true"
+         aria-labelledby="designer-image-finalize-notice-title">
+        <div class="designer-image-regenerate-header border-bottom px-3 py-2">
+            <h3 class="h6 mb-0" id="designer-image-finalize-notice-title">
+                {{#str}} designer_image_finalize_notice_title, block_dixeo_designer {{/str}}
+            </h3>
+        </div>
+        <div class="designer-image-regenerate-body px-3 py-3">
+            <p class="mb-0">{{#str}} designer_image_finalize_notice_body, block_dixeo_designer {{/str}}</p>
+        </div>
+        <div class="designer-image-regenerate-actions border-top px-3 py-2 d-flex justify-content-end gap-2 flex-wrap">
+            <button type="button" class="btn btn-secondary" data-designer-image-finalize-notice-wait>
+                {{#str}} designer_image_finalize_notice_wait, block_dixeo_designer {{/str}}
+            </button>
+            <button type="button" class="btn btn-primary" data-designer-image-finalize-notice-background>
+                {{#str}} designer_image_finalize_notice_background, block_dixeo_designer {{/str}}
+            </button>
+        </div>
+    </div>
+</div>
