@@ -844,19 +844,13 @@ class designer_service {
         }
 
         $imagesbase64 = [course_image_writer::image_url_to_base64($currentimage)];
-        $decoded = json_decode((string) $structure->structure, true);
-        [$payloadtitle, $payloadsummary] = is_array($decoded)
-            ? $this->resolve_image_payload_from_structure_result($decoded)
-            : [null, null];
 
         $operation = $this->get_image_service()->submit_course_image_edit_job(
             (int) $submission->courseid,
             $imagesbase64,
             $instructions,
             image_generation_service::DEFAULT_SIZE,
-            image_generation_service::DEFAULT_QUALITY,
-            $payloadtitle,
-            $payloadsummary
+            image_generation_service::DEFAULT_QUALITY
         );
         $this->structures->set_image_state($jobid, (string) $operation->jobid, 'pending', null);
         image_poll_manager::delete_queued_poll_tasks((int) $submission->courseid);
