@@ -217,8 +217,7 @@ class designer_course_creation_service {
                     $certlocation,
                     get_string('certificate_name', 'block_dixeo_designer'),
                     get_string('certificate_section', 'block_dixeo_designer'),
-                    get_string('certificate_section_intro', 'block_dixeo_designer'),
-                    submission\file_service::CM_IDNUMBER_DESIGNER_UPLOAD
+                    get_string('certificate_section_intro', 'block_dixeo_designer')
                 );
                 $certtrailing = ($placed === 'last');
             }
