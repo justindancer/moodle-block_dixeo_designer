@@ -66,6 +66,13 @@ $string['lti_membersync_desc'] = 'Sincronizar las matrículas de los usuarios de
 $string['lti_membersyncmode'] = 'Modo de sincronización de matrículas';
 $string['lti_membersyncmode_desc'] = 'Elige cómo se sincronizan las matrículas cuando la sincronización está activada.';
 
+$string['self_enrol_heading'] = 'Autoinscripción';
+$string['self_enrol_heading_desc'] = 'Opciones para la autoinscripción cuando se crea un curso. Requiere el plugin enrol_self activado.';
+$string['self_enrol_configure'] = 'Configurar la autoinscripción';
+$string['self_enrol_configure_desc'] = 'Si está activada, la autoinscripción se habilita en los cursos nuevos. Si no existe una instancia, se crea una.';
+$string['self_enrol_generate_key'] = 'Generar una clave de matriculación';
+$string['self_enrol_generate_key_desc'] = 'Si está activada, se define una clave de matriculación única. Si está desactivada, no se usa clave (matrícula abierta), salvo que la configuración de enrol_self a nivel del sitio exija clave; en ese caso, se genera una clave igualmente.';
+
 $string['dixeo_designer:addinstance'] = 'Agregar un bloque Diseñador de Cursos Dixeo';
 $string['dixeo_designer:myaddinstance'] = 'Agregar un nuevo bloque Diseñador de Cursos Dixeo a mi panel';
 $string['dixeo_designer:create'] = 'Crear cursos con el Diseñador de Cursos Dixeo';

@@ -66,6 +66,13 @@ $string['lti_membersync_desc'] = 'Sincronizza le iscrizioni degli utenti dalla p
 $string['lti_membersyncmode'] = 'Modalità di sincronizzazione iscrizioni';
 $string['lti_membersyncmode_desc'] = 'Scegli come sincronizzare le iscrizioni quando la sincronizzazione è attiva.';
 
+$string['self_enrol_heading'] = 'Autoiscrizione';
+$string['self_enrol_heading_desc'] = 'Opzioni per l’autoiscrizione quando viene creato un corso. Richiede il plugin enrol_self abilitato.';
+$string['self_enrol_configure'] = 'Configura l’autoiscrizione';
+$string['self_enrol_configure_desc'] = 'Se attivata, l’autoiscrizione viene attivata per i nuovi corsi. Se non esiste un’istanza, ne viene creata una.';
+$string['self_enrol_generate_key'] = 'Genera una chiave di iscrizione';
+$string['self_enrol_generate_key_desc'] = 'Se attivata, viene impostata una chiave di iscrizione univoca. Se disattivata, non viene usata alcuna chiave (iscrizione aperta), salvo se l’impostazione a livello del sito del plugin enrol_self richiede una chiave; in tal caso viene comunque generata una chiave.';
+
 $string['dixeo_designer:addinstance'] = 'Aggiungi un blocco Progettatore di Corsi Dixeo';
 $string['dixeo_designer:myaddinstance'] = 'Aggiungi un nuovo blocco Progettatore di Corsi Dixeo alla mia dashboard';
 $string['dixeo_designer:create'] = 'Creare corsi con il Progettatore di Corsi Dixeo';

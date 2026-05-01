@@ -243,6 +243,12 @@ class designer_course_creation_service {
             return null;
         }
 
+        $this->apply_self_enrol_if_enabled($courseid);
+
+        if ($this->is_finalize_cancelled($jobid)) {
+            return null;
+        }
+
         $resourcestargetsection = $sectiontotal + 1 + ($certtrailing ? 1 : 0);
         $fileService = new submission\file_service();
         $resourcesrelocated = $fileService->relocate_designer_upload_resources_after_finalize(
@@ -485,6 +491,22 @@ class designer_course_creation_service {
             'membersync' => $membersync,
             'membersyncmode' => $membersyncmode,
         ]);
+    }
+
+    /**
+     * Enable and configure enrol_self when block setting "Configure self enrolment" is enabled.
+     *
+     * @param int $courseid
+     * @return void
+     */
+    private function apply_self_enrol_if_enabled(int $courseid): void {
+        if (!(bool) get_config('block_dixeo_designer', 'self_enrol_configure')) {
+            return;
+        }
+
+        $generatekey = (bool) get_config('block_dixeo_designer', 'self_enrol_generate_key');
+        $service = new \local_dixeo\service\designer_self_enrol_service();
+        $service->configure_for_course($courseid, $generatekey);
     }
 
     /**

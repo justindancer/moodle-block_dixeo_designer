@@ -35,6 +35,8 @@ use local_dixeo\service\module_generation_service;
  * @category   test
  * @copyright  2026 Dixeo
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ *
+ * @covers \block_dixeo_designer\service\designer_course_creation_service
  */
 final class designer_course_creation_service_test extends advanced_testcase {
 
@@ -289,6 +291,63 @@ final class designer_course_creation_service_test extends advanced_testcase {
         $cm = $DB->get_record('course_modules', ['id' => $resource->cmid], '*', MUST_EXIST);
         $sec = $DB->get_record('course_sections', ['id' => $cm->section], '*', MUST_EXIST);
         $this->assertSame(4, (int) $sec->section);
+    }
+
+    public function test_apply_self_enrol_if_enabled_noop_when_block_setting_off(): void {
+        global $DB;
+
+        if (!enrol_is_enabled('self')) {
+            $this->markTestSkipped('The enrol_self plugin is disabled.');
+        }
+
+        set_config('self_enrol_configure', 0, 'block_dixeo_designer');
+
+        $course = $this->getDataGenerator()->create_course();
+        $instance = $DB->get_record('enrol', ['courseid' => $course->id, 'enrol' => 'self'], '*', IGNORE_MISSING);
+        $this->assertNotFalse($instance);
+
+        $instance->status = ENROL_INSTANCE_DISABLED;
+        $instance->password = '';
+        $instance->timemodified = time();
+        $DB->update_record('enrol', $instance);
+
+        $service = new designer_course_creation_service();
+        $m = new \ReflectionMethod($service, 'apply_self_enrol_if_enabled');
+        $m->setAccessible(true);
+        $m->invoke($service, (int) $course->id);
+
+        $after = $DB->get_record('enrol', ['id' => $instance->id], '*', MUST_EXIST);
+        $this->assertSame(ENROL_INSTANCE_DISABLED, (int) $after->status);
+        $this->assertSame('', (string) $after->password);
+    }
+
+    public function test_apply_self_enrol_if_enabled_configures_when_block_setting_on(): void {
+        global $DB;
+
+        if (!enrol_is_enabled('self')) {
+            $this->markTestSkipped('The enrol_self plugin is disabled.');
+        }
+
+        set_config('self_enrol_configure', 1, 'block_dixeo_designer');
+        set_config('self_enrol_generate_key', 1, 'block_dixeo_designer');
+
+        $course = $this->getDataGenerator()->create_course();
+        $instance = $DB->get_record('enrol', ['courseid' => $course->id, 'enrol' => 'self'], '*', IGNORE_MISSING);
+        $this->assertNotFalse($instance);
+
+        $instance->status = ENROL_INSTANCE_DISABLED;
+        $instance->password = '';
+        $instance->timemodified = time();
+        $DB->update_record('enrol', $instance);
+
+        $service = new designer_course_creation_service();
+        $m = new \ReflectionMethod($service, 'apply_self_enrol_if_enabled');
+        $m->setAccessible(true);
+        $m->invoke($service, (int) $course->id);
+
+        $after = $DB->get_record('enrol', ['id' => $instance->id], '*', MUST_EXIST);
+        $this->assertSame(ENROL_INSTANCE_ENABLED, (int) $after->status);
+        $this->assertNotSame('', trim((string) $after->password));
     }
 }
 

@@ -155,4 +155,27 @@ if ($ADMIN->fulltree) {
     $settings->hide_if('block_dixeo_designer/lti_membersync', 'block_dixeo_designer/lti_publication_enabled');
     $settings->hide_if('block_dixeo_designer/lti_membersyncmode', 'block_dixeo_designer/lti_publication_enabled');
     $settings->hide_if('block_dixeo_designer/lti_membersyncmode', 'block_dixeo_designer/lti_membersync', 'eq', 0);
+
+    // Self enrolment for finalized designer courses.
+    $settings->add(new admin_setting_heading(
+        'block_dixeo_designer_self_enrol_heading',
+        get_string('self_enrol_heading', 'block_dixeo_designer'),
+        get_string('self_enrol_heading_desc', 'block_dixeo_designer')
+    ));
+
+    $settings->add(new admin_setting_configcheckbox(
+        'block_dixeo_designer/self_enrol_configure',
+        get_string('self_enrol_configure', 'block_dixeo_designer'),
+        get_string('self_enrol_configure_desc', 'block_dixeo_designer'),
+        0
+    ));
+
+    $settings->add(new admin_setting_configcheckbox(
+        'block_dixeo_designer/self_enrol_generate_key',
+        get_string('self_enrol_generate_key', 'block_dixeo_designer'),
+        get_string('self_enrol_generate_key_desc', 'block_dixeo_designer'),
+        1
+    ));
+
+    $settings->hide_if('block_dixeo_designer/self_enrol_generate_key', 'block_dixeo_designer/self_enrol_configure');
 }

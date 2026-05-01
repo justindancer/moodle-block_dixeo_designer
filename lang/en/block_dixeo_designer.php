@@ -76,6 +76,14 @@ $string['lti_membersync_desc'] = 'Sync user memberships from the platform.';
 $string['lti_membersyncmode'] = 'Membership sync mode';
 $string['lti_membersyncmode_desc'] = 'Choose how memberships are synchronized when membership sync is enabled.';
 
+// Self enrolment (finalize).
+$string['self_enrol_heading'] = 'Self enrolment';
+$string['self_enrol_heading_desc'] = 'Options for the self enrolment method when a course is created. Requires the enrol_self plugin to be enabled.';
+$string['self_enrol_configure'] = 'Configure self enrolment';
+$string['self_enrol_configure_desc'] = 'When enabled, the self enrolment method is turned on for new courses. If no self enrol instance exists yet, one is created.';
+$string['self_enrol_generate_key'] = 'Generate an enrolment key';
+$string['self_enrol_generate_key_desc'] = 'When enabled, a unique enrolment key is set on the self enrolment instance. When disabled, no key is used (open enrolment) unless the site-wide enrol_self setting requires a key, in which case a key is still generated.';
+
 // Course design flow.
 $string['heading'] = 'What do you want to teach today?';
 $string['heading2'] = 'We are building your course!';

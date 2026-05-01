@@ -76,6 +76,13 @@ $string['lti_membersync_desc'] = 'Sincronizar as inscrições dos utilizadores a
 $string['lti_membersyncmode'] = 'Modo de sincronização de inscrições';
 $string['lti_membersyncmode_desc'] = 'Escolha como as inscrições são sincronizadas quando a sincronização está ativa.';
 
+$string['self_enrol_heading'] = 'Autoinscrição';
+$string['self_enrol_heading_desc'] = 'Opções para a autoinscrição quando um curso é criado. Requer o plugin enrol_self ativo.';
+$string['self_enrol_configure'] = 'Configurar a autoinscrição';
+$string['self_enrol_configure_desc'] = 'Se ativada, a autoinscrição é ativada para cursos novos. Se não existir uma instância, é criada uma.';
+$string['self_enrol_generate_key'] = 'Gerar uma chave de inscrição';
+$string['self_enrol_generate_key_desc'] = 'Se ativada, é definida uma chave de inscrição única. Se desativada, não é usada chave (inscrição aberta), exceto se a configuração do enrol_self ao nível do site exigir chave; nesse caso, é gerada uma chave mesmo assim.';
+
 // Course design flow.
 $string['heading'] = 'O que quer ensinar hoje?';
 $string['heading2'] = 'Estamos a construir o seu curso!';

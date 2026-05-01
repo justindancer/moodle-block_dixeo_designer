@@ -76,6 +76,13 @@ $string['lti_membersync_desc'] = 'Nutzer-Mitgliedschaften von der Plattform sync
 $string['lti_membersyncmode'] = 'Modus für Mitgliedschaftssynchronisierung';
 $string['lti_membersyncmode_desc'] = 'Wählen Sie, wie Mitgliedschaften synchronisiert werden, wenn die Synchronisierung aktiviert ist.';
 
+$string['self_enrol_heading'] = 'Selbsteinschreibung';
+$string['self_enrol_heading_desc'] = 'Optionen für die Selbsteinschreibung, wenn ein Kurs angelegt wird. Erfordert das aktivierte Plugin enrol_self.';
+$string['self_enrol_configure'] = 'Selbsteinschreibung konfigurieren';
+$string['self_enrol_configure_desc'] = 'Wenn aktiviert, wird die Selbsteinschreibung für neue Kurse eingeschaltet. Fehlt eine Instanz, wird eine angelegt.';
+$string['self_enrol_generate_key'] = 'Einschreibeschlüssel erzeugen';
+$string['self_enrol_generate_key_desc'] = 'Wenn aktiviert, wird ein eindeutiger Einschreibeschlüssel gesetzt. Wenn deaktiviert, wird kein Schlüssel verwendet (offene Einschreibung), es sei denn, die site-weite Einstellung von enrol_self verlangt einen Schlüssel – dann wird trotzdem ein Schlüssel erzeugt.';
+
 // Course design flow.
 $string['heading'] = 'Was möchten Sie heute unterrichten?';
 $string['heading2'] = 'Wir erstellen Ihren Kurs!';
