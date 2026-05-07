@@ -169,6 +169,20 @@ $string['designer_error_structure_start_failed'] = 'Não foi possível iniciar a
 $string['designer_error_generation_failed_inline'] = 'Geração falhou';
 $string['designer_error_finalize_failed'] = 'Finalização falhou';
 $string['designer_error_save_structure_failed'] = 'Não foi possível guardar a estrutura';
+$string['designer_image_generate'] = 'Editar';
+$string['designer_image_generating_status'] = 'A gerar imagem...';
+$string['designer_image_regenerate'] = 'Editar imagem';
+$string['designer_image_regenerate_dialog_title'] = 'Editar imagem';
+$string['designer_image_regenerate_dialog_label'] = 'Descreva as alterações a fazer à imagem';
+$string['designer_image_regenerate_dialog_placeholder'] =
+    'p. ex. Retirar o portátil da secretária, aproximar ligeiramente o enquadramento e manter a mesma iluminação.';
+$string['designer_image_generate_prompt_required'] = 'Descreva as alterações a fazer à imagem antes de continuar.';
+$string['designer_image_generate_unavailable'] = 'O gerador de imagens ainda não está ligado.';
+$string['designer_image_close_dialog'] = 'Fechar caixa de diálogo da imagem';
+$string['designer_image_finalize_notice_title'] = 'A imagem do curso ainda está a ser gerada';
+$string['designer_image_finalize_notice_body'] = 'A imagem do curso ainda não está pronta. Se criar o curso agora, a geração continuará em segundo plano e a imagem será adicionada ao curso quando estiver pronta.';
+$string['designer_image_finalize_notice_wait'] = 'Aguardar';
+$string['designer_image_finalize_notice_background'] = 'Criar curso';
 
 // Privacy.
 $string['privacy:metadata:userid'] = 'O ID do utilizador que acede ao consumidor LTI';

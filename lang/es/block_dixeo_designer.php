@@ -166,3 +166,17 @@ $string['designer_error_structure_start_failed'] = 'No se pudo iniciar la genera
 $string['designer_error_generation_failed_inline'] = 'Error en la generación';
 $string['designer_error_finalize_failed'] = 'Error al finalizar';
 $string['designer_error_save_structure_failed'] = 'No se pudo guardar la estructura';
+$string['designer_image_generate'] = 'Editar';
+$string['designer_image_generating_status'] = 'Generando imagen...';
+$string['designer_image_regenerate'] = 'Editar imagen';
+$string['designer_image_regenerate_dialog_title'] = 'Editar imagen';
+$string['designer_image_regenerate_dialog_label'] = 'Describe los cambios que quieres aplicar a la imagen';
+$string['designer_image_regenerate_dialog_placeholder'] =
+    'p. ej. Quitar el portátil del escritorio, acercar un poco el encuadre y mantener la misma iluminación.';
+$string['designer_image_generate_prompt_required'] = 'Describe los cambios que quieres aplicar a la imagen antes de continuar.';
+$string['designer_image_generate_unavailable'] = 'El generador de imágenes aún no está conectado.';
+$string['designer_image_close_dialog'] = 'Cerrar el cuadro de diálogo de imagen';
+$string['designer_image_finalize_notice_title'] = 'La imagen del curso sigue generándose';
+$string['designer_image_finalize_notice_body'] = 'La imagen del curso aún no está lista. Si crea el curso ahora, la generación continuará en segundo plano y la imagen se añadirá al curso cuando esté lista.';
+$string['designer_image_finalize_notice_wait'] = 'Esperar';
+$string['designer_image_finalize_notice_background'] = 'Crear curso';

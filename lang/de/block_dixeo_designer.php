@@ -169,6 +169,20 @@ $string['designer_error_structure_start_failed'] = 'Strukturgenerierung konnte n
 $string['designer_error_generation_failed_inline'] = 'Generierung fehlgeschlagen';
 $string['designer_error_finalize_failed'] = 'Finalisierung fehlgeschlagen';
 $string['designer_error_save_structure_failed'] = 'Struktur konnte nicht gespeichert werden';
+$string['designer_image_generate'] = 'Bearbeiten';
+$string['designer_image_generating_status'] = 'Bild wird generiert...';
+$string['designer_image_regenerate'] = 'Bild bearbeiten';
+$string['designer_image_regenerate_dialog_title'] = 'Bild bearbeiten';
+$string['designer_image_regenerate_dialog_label'] = 'Beschreiben Sie die am Bild vorzunehmenden Änderungen';
+$string['designer_image_regenerate_dialog_placeholder'] =
+    'z. B. Laptop vom Schreibtisch entfernen, leicht heranzoomen und gleiche Beleuchtung beibehalten.';
+$string['designer_image_generate_prompt_required'] = 'Beschreiben Sie die am Bild vorzunehmenden Änderungen, bevor Sie fortfahren.';
+$string['designer_image_generate_unavailable'] = 'Der Bildgenerator ist noch nicht verbunden.';
+$string['designer_image_close_dialog'] = 'Bilddialog schließen';
+$string['designer_image_finalize_notice_title'] = 'Kursbild wird noch generiert';
+$string['designer_image_finalize_notice_body'] = 'Das Kursbild ist noch nicht fertig. Wenn Sie den Kurs jetzt anlegen, läuft die Bildgenerierung im Hintergrund weiter und das Bild wird dem Kurs hinzugefügt, sobald es bereit ist.';
+$string['designer_image_finalize_notice_wait'] = 'Warten';
+$string['designer_image_finalize_notice_background'] = 'Kurs anlegen';
 
 // Privacy.
 $string['privacy:metadata:userid'] = 'Die ID der Nutzerin/des Nutzers beim Zugriff auf den LTI Consumer';
