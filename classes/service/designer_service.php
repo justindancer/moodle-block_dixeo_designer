@@ -546,6 +546,19 @@ class designer_service {
             $this->structures->save_structure($jobid, $userid, $submission->prompt ?? '', $result);
         }
 
+        if ($createcourse) {
+            $structurevalidator = new \local_dixeo\service\designer_structure_finalize_validation_service();
+            $structurevalidationerrors = $structurevalidator->validate($result);
+            if ($structurevalidationerrors !== []) {
+                throw new \moodle_exception(
+                    'designerstructurevalidate_failed',
+                    'local_dixeo',
+                    '',
+                    (object) ['details' => implode("\n\n", $structurevalidationerrors)]
+                );
+            }
+        }
+
         if (!$createcourse) {
             return null;
         }

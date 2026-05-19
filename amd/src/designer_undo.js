@@ -42,6 +42,29 @@ define(['jquery'], function($) {
         var finalKey = parts[parts.length - 1].replace(/[\[\]]/g, '');
         current[finalKey] = value;
     },
+
+    /**
+     * Read value from structure by path (matches data-path on editables).
+     *
+     * @param {Object} obj Structure object
+     * @param {string} path Path to property
+     * @return {*}
+     */
+    getValueByPath: function(obj, path) {
+        var parts = path.match(/([^\[\]\.]+)|(\[\d+\])/g);
+        var current = obj;
+
+        for (var i = 0; i < parts.length; i++) {
+            var key = parts[i].replace(/[\[\]]/g, '');
+            if (current === undefined || current === null) {
+                return '';
+            }
+            current = current[key];
+        }
+
+        return current === undefined || current === null ? '' : current;
+    },
+
     /**
      * Update undo/redo button states (in-memory history only)
      */
@@ -62,6 +85,7 @@ define(['jquery'], function($) {
         }
         this.historyIndex--;
         this.structure = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
+        this.prepareStructureMutationForRender();
         this.renderStructure();
         this.updateUndoRedoButtons();
     },
@@ -75,6 +99,7 @@ define(['jquery'], function($) {
         }
         this.historyIndex++;
         this.structure = JSON.parse(JSON.stringify(this.history[this.historyIndex]));
+        this.prepareStructureMutationForRender();
         this.renderStructure();
         this.updateUndoRedoButtons();
     }

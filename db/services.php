@@ -86,6 +86,16 @@ $functions = [
         'capabilities' => 'block/dixeo_designer:create',
         'loginrequired' => true,
     ],
+    'block_dixeo_designer_validate_structure_for_finalize' => [
+        'classname'   => 'block_dixeo_designer\\external\\course\\validate_structure_for_finalize',
+        'methodname'  => 'execute',
+        'classpath'   => '',
+        'description' => 'Validate structure before finalize (read-only; no save or jobs)',
+        'type'        => 'read',
+        'ajax'        => true,
+        'capabilities' => 'block/dixeo_designer:create',
+        'loginrequired' => true,
+    ],
     'block_dixeo_designer_get_structure_status' => [
         'classname'   => 'block_dixeo_designer\\external\\draft\\get_structure_status',
         'methodname'  => 'get_structure_status',

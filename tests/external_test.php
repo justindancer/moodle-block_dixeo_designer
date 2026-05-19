@@ -25,11 +25,13 @@ require_once($CFG->dirroot . '/blocks/dixeo_designer/classes/external/course/fin
 require_once($CFG->dirroot . '/blocks/dixeo_designer/classes/external/draft/cancel_draft.php');
 require_once($CFG->dirroot . '/blocks/dixeo_designer/classes/external/course/get_finalize_progress.php');
 require_once($CFG->dirroot . '/blocks/dixeo_designer/classes/external/course/save_structure.php');
+require_once($CFG->dirroot . '/blocks/dixeo_designer/classes/external/course/validate_structure_for_finalize.php');
 
 use advanced_testcase;
 use block_dixeo_designer\external\course\finalize_course;
 use block_dixeo_designer\external\course\get_finalize_progress;
 use block_dixeo_designer\external\course\save_structure;
+use block_dixeo_designer\external\course\validate_structure_for_finalize;
 use block_dixeo_designer\external\draft\cancel_draft;
 use block_dixeo_designer\external\draft\generate_course;
 use block_dixeo_designer\external\draft\get_structure_status;
@@ -49,6 +51,7 @@ use block_dixeo_designer\service\designer_service_factory;
  * @covers     \block_dixeo_designer\external\draft\cancel_draft
  * @covers     \block_dixeo_designer\external\course\get_finalize_progress
  * @covers     \block_dixeo_designer\external\course\save_structure
+ * @covers     \block_dixeo_designer\external\course\validate_structure_for_finalize
  */
 final class external_test extends advanced_testcase {
 
@@ -359,5 +362,135 @@ final class external_test extends advanced_testcase {
     public function test_save_structure_throws_on_invalid_json(): void {
         $this->expectException(\moodle_exception::class);
         save_structure::save_structure('job-1', 'not valid json{');
+    }
+
+    public function test_validate_structure_for_finalize_returns_invalid_for_bad_json(): void {
+        $result = validate_structure_for_finalize::execute('job-1', 'not valid json{');
+        $this->assertFalse($result['valid']);
+        $this->assertNotEmpty($result['errors']);
+        $this->assertArrayHasKey('fielderrors', $result);
+        $this->assertSame([], $result['fielderrors']);
+    }
+
+    public function test_validate_structure_for_finalize_returns_valid_for_minimal_good_structure(): void {
+        $structure = json_encode([
+            'course_structure' => [
+                'title' => 'My course',
+                'sections' => [
+                    [
+                        'title' => 'Chapter',
+                        'modules' => [
+                            [
+                                'type' => 'page',
+                                'title' => 'Intro',
+                                'summary' => 'Summary text.',
+                                'instructions' => 'Do the thing.',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+        $result = validate_structure_for_finalize::execute('job-val-' . uniqid(), $structure);
+        $this->assertTrue($result['valid'], print_r($result['errors'], true));
+        $this->assertSame([], $result['errors']);
+        $this->assertSame([], $result['fielderrors']);
+    }
+
+    public function test_validate_structure_for_finalize_returns_fielderrors_for_empty_course_title(): void {
+        $structure = json_encode([
+            'course_structure' => [
+                'title' => ' ',
+                'sections' => [],
+            ],
+        ]);
+        $result = validate_structure_for_finalize::execute('job-val-' . uniqid(), $structure);
+        $this->assertFalse($result['valid']);
+        $this->assertNotEmpty($result['errors']);
+        $this->assertNotEmpty($result['fielderrors']);
+        $this->assertSame('title', $result['fielderrors'][0]['path']);
+    }
+
+    public function test_validate_structure_for_finalize_scope_path_limits_fielderrors(): void {
+        $structure = json_encode([
+            'course_structure' => [
+                'title' => 'My course',
+                'sections' => [
+                    [
+                        'title' => 'S',
+                        'modules' => [
+                            [
+                                'type' => 'page',
+                                'title' => '',
+                                'summary' => '',
+                                'instructions' => '',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+        $jobid = 'job-val-' . uniqid();
+        $full = validate_structure_for_finalize::execute($jobid, $structure);
+        $this->assertFalse($full['valid']);
+        $this->assertGreaterThan(1, count($full['fielderrors']));
+
+        $scoped = validate_structure_for_finalize::execute(
+            $jobid,
+            $structure,
+            'sections[0].modules[0].title'
+        );
+        $this->assertFalse($scoped['valid']);
+        $this->assertCount(1, $scoped['fielderrors']);
+        $this->assertSame('sections[0].modules[0].title', $scoped['fielderrors'][0]['path']);
+
+        $summaryscoped = validate_structure_for_finalize::execute(
+            $jobid,
+            $structure,
+            'sections[0].modules[0].summary'
+        );
+        $this->assertTrue($summaryscoped['valid'], print_r($summaryscoped['fielderrors'], true));
+
+        $filledtitle = json_encode([
+            'course_structure' => [
+                'title' => 'My course',
+                'sections' => [
+                    [
+                        'title' => 'S',
+                        'modules' => [
+                            [
+                                'type' => 'page',
+                                'title' => 'Activity title',
+                                'summary' => '',
+                                'instructions' => '',
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+        $titleok = validate_structure_for_finalize::execute(
+            $jobid,
+            $filledtitle,
+            'sections[0].modules[0].title'
+        );
+        $this->assertTrue($titleok['valid'], print_r($titleok['fielderrors'], true));
+    }
+
+    public function test_validate_structure_for_finalize_throws_when_structure_owned_by_other(): void {
+        global $DB;
+
+        $jobid = 'job-owned-' . uniqid();
+        $other = $this->getDataGenerator()->create_user();
+        $DB->insert_record('block_dixeo_designer_structure', (object) [
+            'jobid' => $jobid,
+            'userid' => $other->id,
+            'description' => '',
+            'structure' => json_encode(['course_structure' => ['title' => 'X', 'sections' => []]]),
+            'timecreated' => time(),
+        ]);
+
+        $this->expectException(\moodle_exception::class);
+        validate_structure_for_finalize::execute($jobid, json_encode(['course_structure' => ['title' => 'Y', 'sections' => []]]));
     }
 }

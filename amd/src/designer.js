@@ -136,6 +136,8 @@ define([
         pendingCollapseState: null,
         /** Whether inline editor/actions are locked during create-course generation. */
         designerEditingLocked: false,
+        /** After renderStructure, run full validation (delete/duplicate changes paths). */
+        pendingStructureRevalidation: false,
         /** Cached promise for delete-confirm strings to avoid first-click latency. */
         deleteConfirmStringsPromise: null,
         imageStatusPollIntervalId: null,
@@ -177,6 +179,14 @@ define([
             document.addEventListener(DesignerProgress.ALLOW_NAVIGATION_EVENT, function() {
                 self.hasUnsavedChanges = false;
                 self.suppressBeforeUnload = true;
+            });
+            document.addEventListener(DesignerProgress.STRUCTURE_FIELD_VALIDATION_EVENT, function(ev) {
+                var detail = ev && ev.detail ? ev.detail : {};
+                if (detail.job_id !== undefined && detail.job_id !== null &&
+                        String(detail.job_id) !== String(self.jobid)) {
+                    return;
+                }
+                self.showStructureValidationErrors(detail.fielderrors || []);
             });
             this.loadModuleTypes().then(function() {
                 self.loadStructure();
@@ -248,6 +258,78 @@ define([
             if (!isLocked) {
                 $('#btn-create-course').prop('disabled', false);
             }
+        },
+
+        /**
+         * Validate the in-memory structure via the same rules as finalize.
+         *
+         * @param {string} [scopePath] When set, only validate this data-path (inline field save).
+         * @return {Promise<{valid: boolean, fielderrors: Array, errors: Array}>}
+         */
+        validateStructureForDesigner: function(scopePath) {
+            var args = {
+                job_id: this.jobid,
+                structure: JSON.stringify(this.structure)
+            };
+            if (scopePath) {
+                args.scope_path = String(scopePath);
+            }
+            return Ajax.call([{
+                methodname: 'block_dixeo_designer_validate_structure_for_finalize',
+                args: args
+            }])[0];
+        },
+
+        /**
+         * Re-fetch validation errors from the server and update the UI.
+         *
+         * @return {Promise<boolean>} True when structure is valid.
+         */
+        revalidateStructureAfterRender: function() {
+            var self = this;
+            return this.validateStructureForDesigner().then(function(resp) {
+                if (resp && resp.valid) {
+                    self.clearStructureValidationErrors();
+                    return true;
+                }
+                var fielderrors = (resp && resp.fielderrors) ? resp.fielderrors : [];
+                self.showStructureValidationErrors(fielderrors);
+                return false;
+            });
+        },
+
+        /**
+         * Whether validation messages are visible (paths may be stale after index changes).
+         *
+         * @return {boolean}
+         */
+        shouldRefreshStructureValidationDisplay: function() {
+            var $container = $('.course-structure-container');
+            return $container.find('.dixeo-designer-field-error').length > 0 ||
+                $container.find('.dixeo-designer-structure-global-errors').length > 0;
+        },
+
+        /**
+         * Close inline edit and schedule a full validation refresh after the next renderStructure.
+         */
+        prepareStructureMutationForRender: function() {
+            if (this.currentlyEditing) {
+                this.cancelEdit(this.currentlyEditing);
+            }
+            this.pendingStructureRevalidation = this.shouldRefreshStructureValidationDisplay();
+        },
+
+        /**
+         * Normalize a field error row from the validation webservice.
+         *
+         * @param {*} row
+         * @return {{path: string, message: string}}
+         */
+        normalizeFieldError: function(row) {
+            return {
+                path: (row && row.path !== undefined && row.path !== null) ? String(row.path) : '',
+                message: (row && row.message !== undefined && row.message !== null) ? String(row.message) : ''
+            };
         },
 
         /**
@@ -357,8 +439,7 @@ define([
             var container = $('.course-structure-container');
             container.empty();
 
-            if (!this.structure || !this.structure.title) {
-                var self = this;
+            if (!this.structure) {
                 Str.get_string('designer_invalid_data', 'block_dixeo_designer').done(function(str) {
                     container.html('<div class="alert alert-danger">' + str + '</div>');
                 });
@@ -369,7 +450,7 @@ define([
             // Note: We don't escape HTML here because Mustache auto-escapes {{}} variables
             var templateContext = {
                 title: this.structure.title || '',
-                summary: this.structure.summary || null,
+                summary: this.structure.summary || '',
                 image: this.structure.image || null,
                 jobid: this.jobid,
                 hasSections: this.structure.sections && this.structure.sections.length > 0,
@@ -386,7 +467,7 @@ define([
                         index: sectionIdx,
                         number: sectionIdx + 1,
                         title: section.title || '',
-                        summary: section.summary || null,
+                        summary: section.summary || '',
                         jobid: self.jobid,
                         hasModules: section.modules && section.modules.length > 0,
                         modules: []
@@ -403,8 +484,8 @@ define([
                                 type: moduleType,
                                 typeLabel: self.getModuleTypeLabel(moduleType),
                                 title: module.title || '',
-                                summary: module.summary || null,
-                                instructions: module.instructions || null,
+                                summary: module.summary || '',
+                                instructions: module.instructions || '',
                                 iconurl: iconurl,
                                 jobid: self.jobid,
                                 moduleTypeOptions: MODULE_TYPE_OPTIONS
@@ -430,7 +511,14 @@ define([
                 {key: 'designer_expand_all', component: 'block_dixeo_designer'},
                 {key: 'designer_collapse_all', component: 'block_dixeo_designer'},
                 {key: 'designer_module_summary_label', component: 'block_dixeo_designer'},
-                {key: 'designer_module_instructions_label', component: 'block_dixeo_designer'}
+                {key: 'designer_module_instructions_label', component: 'block_dixeo_designer'},
+                {key: 'designer_placeholder_course_title', component: 'block_dixeo_designer'},
+                {key: 'designer_placeholder_course_summary', component: 'block_dixeo_designer'},
+                {key: 'designer_placeholder_section_title', component: 'block_dixeo_designer'},
+                {key: 'designer_placeholder_section_summary', component: 'block_dixeo_designer'},
+                {key: 'designer_placeholder_module_title', component: 'block_dixeo_designer'},
+                {key: 'designer_placeholder_module_summary', component: 'block_dixeo_designer'},
+                {key: 'designer_placeholder_module_instructions', component: 'block_dixeo_designer'}
             ]);
 
             stringsPromise.then(function(strings) {
@@ -444,13 +532,26 @@ define([
                     expand_all: strings[6],
                     collapse_all: strings[7],
                     module_summary_label: strings[8],
-                    module_instructions_label: strings[9]
+                    module_instructions_label: strings[9],
+                    placeholder_course_title: strings[10],
+                    placeholder_course_summary: strings[11],
+                    placeholder_section_title: strings[12],
+                    placeholder_section_summary: strings[13],
+                    placeholder_module_title: strings[14],
+                    placeholder_module_summary: strings[15],
+                    placeholder_module_instructions: strings[16]
                 };
 
                 return Templates.render('block_dixeo_designer/course_structure', templateContext);
             }).then(function(html) {
                 container.html(html);
                 self.setupEventHandlersAfterRender();
+                if (self.pendingStructureRevalidation) {
+                    self.pendingStructureRevalidation = false;
+                    self.revalidateStructureAfterRender();
+                } else {
+                    self.clearStructureValidationErrors();
+                }
             }).catch(function(error) {
                 Notification.exception(error);
                 Str.get_string('designer_invalid_data', 'block_dixeo_designer').done(function(str) {
@@ -879,6 +980,9 @@ define([
 
             // Use event delegation for dynamically added elements
             $(document).off('click', '.module-type-select-toggle').on('click', '.module-type-select-toggle', function(e) {
+                if (self.designerEditingLocked) {
+                    return;
+                }
                 e.stopPropagation();
                 e.preventDefault();
                 var $wrapper = $(this).closest('.module-type-select-wrapper');
@@ -887,6 +991,9 @@ define([
 
             // Also open dropdown when clicking module-type div
             $(document).off('click', '.module-type').on('click', '.module-type', function(e) {
+                if (self.designerEditingLocked) {
+                    return;
+                }
                 e.stopPropagation();
                 var $moduleItem = $(this).closest('.module-item');
                 var $wrapper = $moduleItem.find('.module-type-select-wrapper');
@@ -897,6 +1004,9 @@ define([
 
             // Use event delegation for dynamically added elements
             $(document).off('click', '.module-type-option').on('click', '.module-type-option', function(e) {
+                if (self.designerEditingLocked) {
+                    return;
+                }
                 e.stopPropagation();
                 var value = $(this).data('value');
                 var $wrapper = $(this).closest('.module-type-select-wrapper');
@@ -929,6 +1039,9 @@ define([
 
                 closeAllDropdowns();
                 self.pushHistory();
+                self.clearStructureFieldValidationError(
+                    'sections[' + sectionIdx + '].modules[' + moduleIdx + '].type'
+                );
             });
 
             $(document).off('click.module-type-select').on('click.module-type-select', function(e) {
@@ -980,26 +1093,26 @@ define([
             // Capture collapse state before re-rendering
             var expandedSections = this.captureCollapseState();
 
-            // Load language strings for defaults
-            Str.get_strings([
-                {key: 'designer_new_section_title', component: 'block_dixeo_designer'},
-                {key: 'designer_new_section_summary', component: 'block_dixeo_designer'}
-            ]).done(function(strings) {
-                var newSection = {
-                    title: strings[0],
-                    summary: strings[1],
-                    modules: []
-                };
+            self.prepareStructureMutationForRender();
 
-                // Insert at the specified index
-                self.structure.sections.splice(index, 0, newSection);
-                self.pushHistory();
+            if (!Array.isArray(this.structure.sections)) {
+                this.structure.sections = [];
+            }
 
-                // Store expanded state to restore after render
-                self.pendingCollapseState = expandedSections;
+            var newSection = {
+                title: '',
+                summary: '',
+                modules: []
+            };
 
-                self.renderStructure();
-            });
+            // Insert at the specified index
+            self.structure.sections.splice(index, 0, newSection);
+            self.pushHistory();
+
+            // Store expanded state to restore after render
+            self.pendingCollapseState = expandedSections;
+
+            self.renderStructure();
         },
 
         /**
@@ -1017,30 +1130,113 @@ define([
                 this.structure.sections[sectionIndex].modules = [];
             }
 
-            // Load language strings for defaults
-            Str.get_strings([
-                {key: 'designer_new_module_type', component: 'block_dixeo_designer'},
-                {key: 'designer_new_module_title', component: 'block_dixeo_designer'},
-                {key: 'designer_new_module_summary', component: 'block_dixeo_designer'},
-                {key: 'designer_new_module_instructions', component: 'block_dixeo_designer'}
-            ]).done(function(strings) {
-                var newModule = {
-                    type: strings[0],
-                    title: strings[1],
-                    summary: strings[2],
-                    instructions: strings[3]
-                };
+            var defaultType = MODULE_TYPE_OPTIONS.length ? MODULE_TYPE_OPTIONS[0].value : 'page';
+            var newModule = {
+                type: defaultType,
+                title: '',
+                summary: '',
+                instructions: ''
+            };
 
-                // Insert at the specified index
-                self.structure.sections[sectionIndex].modules.splice(moduleIndex, 0, newModule);
-                self.pushHistory();
+            // Insert at the specified index
+            self.structure.sections[sectionIndex].modules.splice(moduleIndex, 0, newModule);
+            self.pushHistory();
 
-                // Store expanded state to restore after render (and ensure section is expanded)
-                expandedSections[sectionIndex] = true;
-                self.pendingCollapseState = expandedSections;
+            // Store expanded state to restore after render (and ensure section is expanded)
+            expandedSections[sectionIndex] = true;
+            self.pendingCollapseState = expandedSections;
 
-                self.renderStructure();
+            self.prepareStructureMutationForRender();
+            self.renderStructure();
+        },
+
+        /**
+         * Find a structure field node by its data-path (matches server validation paths).
+         *
+         * @param {string} path
+         * @returns {JQuery}
+         */
+        findFieldElementByPath: function(path) {
+            var want = String(path);
+            return $('.course-structure-container [data-path]').filter(function() {
+                return String($(this).attr('data-path') || '') === want;
             });
+        },
+
+        clearStructureValidationErrors: function() {
+            var $container = $('.course-structure-container');
+            $container.find('.dixeo-designer-field-error').remove();
+            $container.find('.dixeo-designer-structure-global-errors').remove();
+            $container.find('.is-invalid').removeClass('is-invalid');
+        },
+
+        clearStructureFieldValidationError: function(path) {
+            if (!path) {
+                return;
+            }
+            var $field = this.findFieldElementByPath(String(path));
+            if (!$field.length) {
+                return;
+            }
+            $field.removeClass('is-invalid');
+            $field.nextAll('.dixeo-designer-field-error').remove();
+        },
+
+        /**
+         * Show finalize validation messages next to matching fields (Moodle invalid-feedback style).
+         *
+         * @param {Array<{path: string, message: string}>} fielderrors
+         */
+        showStructureValidationErrors: function(fielderrors) {
+            if (!fielderrors || !fielderrors.length) {
+                this.clearStructureValidationErrors();
+                return;
+            }
+
+            var $container = $('.course-structure-container');
+            $container.find('.dixeo-designer-field-error').remove();
+            $container.find('.dixeo-designer-structure-global-errors').remove();
+            $container.find('.is-invalid').removeClass('is-invalid');
+
+            var self = this;
+            var globalMsgs = [];
+            fielderrors.forEach(function(row) {
+                var normalized = self.normalizeFieldError(row);
+                var path = normalized.path;
+                var msg = normalized.message;
+                if (!msg) {
+                    return;
+                }
+                if (!path) {
+                    globalMsgs.push(msg);
+                    return;
+                }
+                var $field = self.findFieldElementByPath(path);
+                if (!$field.length) {
+                    globalMsgs.push(msg);
+                    return;
+                }
+                $field.addClass('is-invalid');
+                var $fb = $('<div class="dixeo-designer-field-error invalid-feedback d-block"></div>').text(msg);
+                var $controls = self.getEditControlsForEditable($field);
+                if ($controls.length) {
+                    $controls.after($fb);
+                } else {
+                    $field.after($fb);
+                }
+            });
+            if (globalMsgs.length) {
+                var $alert = $('<div class="alert alert-danger dixeo-designer-structure-global-errors" role="alert"></div>');
+                globalMsgs.forEach(function(m) {
+                    $alert.append($('<p class="mb-1"></p>').text(m));
+                });
+                $container.prepend($alert);
+            }
+
+            var firstInvalid = $container.find('.is-invalid').get(0);
+            if (firstInvalid && typeof firstInvalid.scrollIntoView === 'function') {
+                firstInvalid.scrollIntoView({block: 'nearest', behavior: 'smooth'});
+            }
         },
 
         /**
@@ -1076,6 +1272,7 @@ define([
                 // Store expanded state to restore after render
                 self.pendingCollapseState = expandedSections;
 
+                self.prepareStructureMutationForRender();
                 self.renderStructure();
             });
         },
@@ -1127,6 +1324,7 @@ define([
                             // Store expanded state to restore after render
                             self.pendingCollapseState = expandedSections;
 
+                            self.prepareStructureMutationForRender();
                             self.renderStructure();
                         }
                     );

@@ -100,6 +100,7 @@ define(['jquery'], function($) {
                 self.pushHistory();
                 var adjustedExpanded = self.adjustExpandedIndices(expandedSections, fromIndex, toIndex);
                 self.pendingCollapseState = adjustedExpanded;
+                self.prepareStructureMutationForRender();
                 self.renderStructure();
             }
         });
@@ -187,6 +188,7 @@ define(['jquery'], function($) {
                 self.structure.sections[toSectionIdx].modules.splice(toModuleIdx, 0, module);
                 self.pushHistory();
                 self.pendingCollapseState = expandedSections;
+                self.prepareStructureMutationForRender();
                 self.renderStructure();
             }
         });
@@ -233,6 +235,7 @@ define(['jquery'], function($) {
                 self.structure.sections[toSectionIdx].modules.push(module);
                 self.pushHistory();
                 self.pendingCollapseState = expandedSections;
+                self.prepareStructureMutationForRender();
                 self.renderStructure();
             }
         });

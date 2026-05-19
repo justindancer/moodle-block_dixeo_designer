@@ -590,6 +590,34 @@
     min-height: calc(100vh - 200px);
 }
 
+/* Empty inline editables: muted placeholder label (set in JS; not stored in JSON). */
+#page-blocks-dixeo_designer-designer .course-structure-container [data-placeholder].editable.is-empty,
+#page-blocks-dixeo_designer-designer .course-structure-container [data-placeholder].editable:empty {
+    min-height: 1.5em;
+}
+
+#page-blocks-dixeo_designer-designer .course-structure-container [data-placeholder].editable.is-showing-placeholder {
+    color: var(--dixeo-designer-text-muted, #6c757d) !important;
+}
+
+#page-blocks-dixeo_designer-designer .course-structure-container .editable.is-invalid,
+#page-blocks-dixeo_designer-designer .course-structure-container .module-type-select-wrapper.is-invalid {
+    outline: 2px solid var(--danger, #ca3120);
+    outline-offset: 1px;
+    border-radius: 2px;
+}
+
+#page-blocks-dixeo_designer-designer .course-structure-container .dixeo-designer-field-error {
+    color: var(--danger, #ca3120);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    width: 100%;
+}
+
+#page-blocks-dixeo_designer-designer .course-structure-container .dixeo-designer-structure-global-errors {
+    margin-bottom: 1rem;
+}
+
 #page-blocks-dixeo_designer-designer .course-overview {
     margin-bottom: var(--dixeo-structure-overview-gap);
 }

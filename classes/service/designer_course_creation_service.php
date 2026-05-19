@@ -683,7 +683,7 @@ class designer_course_creation_service {
                 $modulename = $module['type'] ?? 'page';
                 $title = trim((string) ($module['title'] ?? ''));
                 $summary = trim((string) ($module['summary'] ?? ''));
-                $instructions = $this->build_module_instructions($module, $sectiondata);
+                $instructions = $this->build_module_instructions($module);
 
                 $this->fill_single_module_from_structure(
                     $jobid,
@@ -741,7 +741,6 @@ class designer_course_creation_service {
         if (!$this->is_modulegen_queue_available()) {
             return;
         }
-        $displaytitle = $structuretitle !== '' ? $structuretitle : get_string('designer_new_module_title', 'block_dixeo_designer');
         if (!empty($out['success']) && !empty($out['cmid'])) {
             \block_dixeo_modulegen\queue_service::log_fill_completed(
                 $courseid,
@@ -750,7 +749,7 @@ class designer_course_creation_service {
                 $sectionnumber,
                 $beforemod,
                 (int) $out['cmid'],
-                $displaytitle,
+                $structuretitle,
                 $summary,
                 (string) ($out['fill_jobid'] ?? '')
             );
@@ -761,7 +760,7 @@ class designer_course_creation_service {
                 $instructions,
                 $sectionnumber,
                 $beforemod,
-                $displaytitle,
+                $structuretitle,
                 $summary,
                 (string) ($out['fill_jobid'] ?? ''),
                 (string) $out['error']
@@ -786,7 +785,6 @@ class designer_course_creation_service {
         string $summary
     ): array {
         $filljobid = '';
-        $resolvedtitle = $title !== '' ? $title : get_string('designer_new_module_title', 'block_dixeo_designer');
 
         try {
             $operation = $moduleservice->submit_fill_job_for_course(
@@ -794,7 +792,7 @@ class designer_course_creation_service {
                 $instructions,
                 $courseid,
                 $sectionnumber,
-                $resolvedtitle,
+                $title,
                 $summary
             );
             $filljobid = (string) ($operation->jobid ?? '');
@@ -857,8 +855,8 @@ class designer_course_creation_service {
                 $courseid,
                 $sectionnumber,
                 null,
-                $title !== '' ? $title : null,
-                $summary !== '' ? format_text($summary, FORMAT_PLAIN) : null
+                $title,
+                format_text($summary, FORMAT_PLAIN)
             );
 
             if (empty($result['success'])) {
@@ -949,26 +947,13 @@ class designer_course_creation_service {
         );
     }
 
-    private function build_module_instructions(array $module, array $section): string {
-        $parts = [];
-
-        if (!empty($module['instructions'])) {
-            $parts[] = trim((string) $module['instructions']);
-        }
-        $modulesummary = trim((string) ($module['summary'] ?? ''));
-        if ($modulesummary !== '') {
-            $parts[] = 'Module summary: ' . $modulesummary;
-        }
-        if (!empty($section['title'])) {
-            $parts[] = 'Section: ' . trim((string) $section['title']);
-        }
-
-        $instructions = trim(implode("\n\n", array_filter($parts)));
-        if ($instructions !== '') {
-            return $instructions;
-        }
-
-        return get_string('designer_default_module_prompt', 'block_dixeo_designer');
+    /**
+     * AI fill instructions payload (module summary is passed separately to the fill API).
+     *
+     * @param array $module Structure module row.
+     */
+    private function build_module_instructions(array $module): string {
+        return trim((string) ($module['instructions'] ?? ''));
     }
 
     /**

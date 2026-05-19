@@ -194,16 +194,64 @@ define([
 
         self.finalizeProgressCompleted = false;
         self.clearFinalizePoll();
-        self.setDesignerEditingLocked(true);
 
         var generatorForm = document.getElementById('edai_course_designer_form');
         var promptContainer = generatorForm ? generatorForm.querySelector('.prompt-container') : null;
         var generationContainer = generatorForm ? generatorForm.querySelector('.generation-container') : null;
 
         /**
+         * Run server-side finalize validation before any UI lock, save, or finalize (read-only).
+         *
+         * @returns {void}
+         */
+        function runValidateThenMaybeProceed() {
+            self.clearStructureValidationErrors();
+            Ajax.call([{
+                methodname: 'block_dixeo_designer_validate_structure_for_finalize',
+                args: {
+                    job_id: self.jobid,
+                    structure: JSON.stringify(self.structure)
+                }
+            }])[0].then(function(resp) {
+                if (!resp || !resp.valid) {
+                    var fielderrors = (resp && resp.fielderrors) ? resp.fielderrors : [];
+                    if (fielderrors.length) {
+                        self.showStructureValidationErrors(fielderrors);
+                    }
+                    var errs = (resp && resp.errors && resp.errors.length) ?
+                        resp.errors :
+                        ['Validation failed'];
+                    var body = errs.join('\n\n');
+                    var reenableBtn = function() {
+                        $btn.prop('disabled', false);
+                    };
+                    if (!fielderrors.length) {
+                        Str.get_string('designer_structure_validation_failed_title', 'block_dixeo_designer')
+                            .then(function(title) {
+                                Notification.alert(title, body);
+                                reenableBtn();
+                            })
+                            .catch(function() {
+                                Notification.alert('', body);
+                                reenableBtn();
+                            });
+                    } else {
+                        reenableBtn();
+                    }
+                    return;
+                }
+                maybeWarnPendingImageThenProceed();
+            }).catch(function(err) {
+                $btn.prop('disabled', false);
+                Notification.exception(err);
+            });
+        }
+
+        /**
          * Reveal generation UI, position lock backdrop, then save structure and finalize course.
          */
         function runFinalizeFlow() {
+            self.setDesignerEditingLocked(true);
             if (promptContainer && generationContainer) {
                 promptContainer.classList.replace('d-block', 'd-none');
                 generationContainer.classList.remove('d-none');
@@ -313,7 +361,7 @@ define([
             });
         }
 
-        maybeWarnPendingImageThenProceed();
+        runValidateThenMaybeProceed();
     },
 
     pollDesignerFinalizeProgress: function() {

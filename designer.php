@@ -65,6 +65,7 @@ $PAGE->set_url(new moodle_url('/blocks/dixeo_designer/designer.php', $urlparams)
 $PAGE->set_context(context_system::instance());
 $PAGE->set_title(get_string('pluginname', 'block_dixeo_designer'));
 $PAGE->set_heading(''); // Empty heading (no page title)
+$PAGE->requires->css('/blocks/dixeo_designer/styles.css');
 
 echo $OUTPUT->header();
 

@@ -45,6 +45,12 @@ define([
     const ALLOW_NAVIGATION_EVENT = 'dixeo_designer_allow_navigation';
 
     /**
+     * Dispatched when structure finalize validation failed with field paths (designer UI).
+     * detail: { job_id: string, fielderrors: {path, message}[] }
+     */
+    const STRUCTURE_FIELD_VALIDATION_EVENT = 'dixeo_designer_structure_field_validation';
+
+    /**
      * Map progress percentage to an active step.
      *
      * Step mapping: 0–20% => 1; >20–40% => 2; >=40–<80% => 3; >=80% => 4.
@@ -318,24 +324,85 @@ define([
                         const delayMs = createcourse ? 500 : 1000;
                         setTimeout(function() {
                             if (createcourse) {
+                                const structureJson = (typeof data.result === 'string')
+                                    ? data.result
+                                    : JSON.stringify(data.result || {});
                                 Ajax.call([{
-                                    methodname: 'block_dixeo_designer_finalize_course',
+                                    methodname: 'block_dixeo_designer_validate_structure_for_finalize',
                                     args: {
                                         job_id: self.getJobId(),
-                                        createcourse: true,
-                                        sesskey: M.cfg.sesskey,
-                                        finalize_mode: 'quick'
+                                        structure: structureJson
                                     },
-                                }])[0].catch(function(err) {
-                                    if (runId !== self.generationRunId) {
-                                        return;
-                                    }
-                                    self.resetProgress();
-                                    Str.get_string('designer_error_finalize_failed', 'block_dixeo_designer').then(function(msg) {
-                                        Notification.alert('', err.message || msg);
+                                }])[0]
+                                    .then(function(vresp) {
+                                        if (runId !== self.generationRunId) {
+                                            return;
+                                        }
+                                        if (!vresp || !vresp.valid) {
+                                            self.resetProgress();
+                                            const fielderrors = (vresp && vresp.fielderrors) ? vresp.fielderrors : [];
+                                            if (fielderrors.length) {
+                                                document.dispatchEvent(new CustomEvent(
+                                                    STRUCTURE_FIELD_VALIDATION_EVENT,
+                                                    {
+                                                        bubbles: true,
+                                                        detail: {
+                                                            job_id: self.getJobId(),
+                                                            fielderrors: fielderrors
+                                                        }
+                                                    }
+                                                ));
+                                            }
+                                            const errs = (vresp && vresp.errors && vresp.errors.length) ?
+                                                vresp.errors :
+                                                ['Validation failed'];
+                                            const body = errs.join('\n\n');
+                                            if (!fielderrors.length) {
+                                                Str.get_string(
+                                                    'designer_structure_validation_failed_title',
+                                                    'block_dixeo_designer'
+                                                ).then(function(title) {
+                                                    Notification.alert(title, body);
+                                                }).catch(function() {
+                                                    Notification.alert('', body);
+                                                });
+                                            }
+                                            return;
+                                        }
+                                        Ajax.call([{
+                                            methodname: 'block_dixeo_designer_finalize_course',
+                                            args: {
+                                                job_id: self.getJobId(),
+                                                createcourse: true,
+                                                sesskey: M.cfg.sesskey,
+                                                finalize_mode: 'quick'
+                                            },
+                                        }])[0].catch(function(err) {
+                                            if (runId !== self.generationRunId) {
+                                                return;
+                                            }
+                                            self.resetProgress();
+                                            Str.get_string(
+                                                'designer_error_finalize_failed',
+                                                'block_dixeo_designer'
+                                            ).then(function(msg) {
+                                                Notification.alert('', err.message || msg);
+                                            });
+                                        });
+                                        self.pollFinalizeProgress(runId);
+                                    })
+                                    .catch(function(err) {
+                                        if (runId !== self.generationRunId) {
+                                            return;
+                                        }
+                                        self.resetProgress();
+                                        Str.get_string(
+                                            'designer_error_finalize_failed',
+                                            'block_dixeo_designer'
+                                        ).then(function(msg) {
+                                            Notification.alert('', err.message || msg);
+                                        });
                                     });
-                                });
-                                self.pollFinalizeProgress(runId);
                             } else {
                                 var structureJson = (typeof data.result === 'string')
                                     ? data.result
@@ -732,6 +799,7 @@ define([
         SESSION_RETURN_TO_JOBID_KEY: SESSION_RETURN_TO_JOBID_KEY,
         GLOBAL_UNLOCK_UI_EVENT: GLOBAL_UNLOCK_UI_EVENT,
         ALLOW_NAVIGATION_EVENT: ALLOW_NAVIGATION_EVENT,
+        STRUCTURE_FIELD_VALIDATION_EVENT: STRUCTURE_FIELD_VALIDATION_EVENT,
         getActiveStepFromProgress: getActiveStepFromProgress,
     };
 });

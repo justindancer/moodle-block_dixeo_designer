@@ -9,7 +9,7 @@
     * image - Course image (optional)
     * jobid - Job ID
     * sections - Array of sections
-    * strings - From AMD (expand_all, module_summary_label, module_instructions_label, etc.)
+    * strings - From AMD (expand_all, module_summary_label, placeholders for empty editables, etc.)
     * designer_image_show_loading - When true, show generating spinner (course image policy + no image yet)
     * designer_image_allow_edit - When true, show regenerate control (course image edit policy + has image)
     * designer_show_course_image_area - When false, hide the course image frame (no image and generation disabled)
@@ -18,7 +18,7 @@
     {{#designer_show_course_image_area}}
     <div class="course-image {{#designer_image_show_loading}}is-loading{{/designer_image_show_loading}}" data-designer-course-image-root>
         {{#image}}
-        <img src="{{image}}" alt="{{title}}" loading="lazy" width="280" height="157" decoding="async" data-designer-course-image>
+        <img src="{{image}}" alt="{{#title}}{{title}}{{/title}}{{^title}}{{#str}} designer_placeholder_course_title, block_dixeo_designer {{/str}}{{/title}}" loading="lazy" width="280" height="157" decoding="async" data-designer-course-image>
         {{/image}}
         <div class="course-image-placeholder {{#image}}d-none{{/image}}" data-designer-course-image-placeholder>
             {{#designer_image_show_loading}}
@@ -37,12 +37,10 @@
         {{/designer_image_allow_edit}}
     </div>
     {{/designer_show_course_image_area}}
-    <h2 class="course-title editable" data-path="title">{{title}}</h2>
+    <h2 class="course-title editable" data-path="title" data-placeholder="{{strings.placeholder_course_title}}">{{title}}</h2>
     <div class="edit-controls"></div>
-    {{#summary}}
-    <p class="course-summary editable text-muted" data-path="summary">{{summary}}</p>
+    <p class="course-summary editable text-muted" data-path="summary" data-placeholder="{{strings.placeholder_course_summary}}">{{summary}}</p>
     <div class="edit-controls"></div>
-    {{/summary}}
 </div>
 
 <div class="designer-image-preview-modal d-none" data-designer-image-preview-modal aria-hidden="true">
@@ -54,7 +52,7 @@
                 aria-label="{{#str}} designer_image_close_dialog, block_dixeo_designer {{/str}}">
             <span aria-hidden="true">&times;</span>
         </button>
-        <img src="{{image}}" alt="{{title}}" loading="lazy" decoding="async" data-designer-image-preview-img>
+        <img src="{{image}}" alt="{{#title}}{{title}}{{/title}}{{^title}}{{#str}} designer_placeholder_course_title, block_dixeo_designer {{/str}}{{/title}}" loading="lazy" decoding="async" data-designer-image-preview-img>
     </div>
 </div>
 
@@ -123,16 +121,10 @@
             </button>
 
             <div class="section-content flex-grow-1">
-                <h4 class="section-title editable" data-path="sections[{{index}}].title">
-                    {{title}}
-                </h4>
+                <h4 class="section-title editable" data-path="sections[{{index}}].title" data-placeholder="{{strings.placeholder_section_title}}">{{title}}</h4>
                 <div class="edit-controls"></div>
-                {{#summary}}
-                <p class="section-summary editable text-muted" data-path="sections[{{index}}].summary">
-                    {{summary}}
-                </p>
+                <p class="section-summary editable text-muted" data-path="sections[{{index}}].summary" data-placeholder="{{strings.placeholder_section_summary}}">{{summary}}</p>
                 <div class="edit-controls"></div>
-                {{/summary}}
             </div>
         </div>
 
@@ -151,7 +143,10 @@
                         <button class="btn-delete-item btn-danger" title="{{strings.delete}}" data-action="delete"><i class="fa fa-trash"></i></button>
                     </div>
 
-                    <div class="module-type-select-wrapper text-primary" data-section-index="{{sectionIndex}}" data-module-index="{{index}}">
+                    <div class="module-type-select-wrapper text-primary"
+                         data-section-index="{{sectionIndex}}"
+                         data-module-index="{{index}}"
+                         data-path="sections[{{sectionIndex}}].modules[{{index}}].type">
                         <button type="button" class="module-type-select-toggle" aria-haspopup="listbox" aria-expanded="false" aria-label="{{strings.change_activity_type}}">
                             <span class="module-type-select-toggle-main">
                                 <span class="dixeo-designer-module-type-icon dixeo-designer-module-type-icon--toggle"
@@ -174,21 +169,13 @@
 
                     <div class="module-details flex-grow-1">
                         <div class="module-type text-muted small">{{typeLabel}}</div>
-                        <h5 class="module-title editable" data-path="sections[{{sectionIndex}}].modules[{{index}}].title">
-                            {{title}}
-                        </h5>
+                        <h5 class="module-title editable" data-path="sections[{{sectionIndex}}].modules[{{index}}].title" data-placeholder="{{strings.placeholder_module_title}}">{{title}}</h5>
                         <div class="edit-controls"></div>
                         <div class="module-summary-label text-muted small">{{strings.module_summary_label}}</div>
-                        <p class="module-summary editable text-muted small"
-                           data-path="sections[{{sectionIndex}}].modules[{{index}}].summary">
-                            {{summary}}
-                        </p>
+                        <p class="module-summary editable text-muted small" data-path="sections[{{sectionIndex}}].modules[{{index}}].summary" data-placeholder="{{strings.placeholder_module_summary}}">{{summary}}</p>
                         <div class="edit-controls"></div>
                         <div class="module-instructions-label text-muted small">{{strings.module_instructions_label}}</div>
-                        <p class="module-instructions editable text-muted small"
-                           data-path="sections[{{sectionIndex}}].modules[{{index}}].instructions">
-                            {{instructions}}
-                        </p>
+                        <p class="module-instructions editable text-muted small" data-path="sections[{{sectionIndex}}].modules[{{index}}].instructions" data-placeholder="{{strings.placeholder_module_instructions}}">{{instructions}}</p>
                         <div class="edit-controls"></div>
                     </div>
                 </div>
