@@ -31,6 +31,7 @@ class render_helper {
     /**
      * Build template context for the prompt UI.
      *
+     * @param \core\output\renderer_base $output Renderer for templatable export.
      * @param string $jobid
      * @param string|null $prompt
      * @param string|null $templateid
@@ -39,20 +40,21 @@ class render_helper {
      * @return array
      */
     public static function build_prompt_context(
+        \core\output\renderer_base $output,
         string $jobid,
         ?string $prompt,
         ?string $templateid,
         array $filecontext,
         bool $isexistingjob = false
     ): array {
-        $templateoptions = course_template_helper::get_course_template_options($templateid);
+        $templateselector = course_template_helper::export_template_selector($output, $templateid);
 
         return [
             'course_description' => $prompt ?? '',
             'job_id' => $jobid,
             'uploading_files' => get_string('uploading_files', 'block_dixeo_designer'),
-            'has_template_options' => !empty($templateoptions),
-            'template_options' => $templateoptions,
+            'has_template_selector' => $templateselector !== null,
+            'template_selector' => $templateselector,
             'is_existing_job' => $isexistingjob,
             'hide_generate_course' => $isexistingjob,
             'generate_structure_label' => get_string(

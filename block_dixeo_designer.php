@@ -100,6 +100,7 @@ class block_dixeo_designer extends block_base {
         $designeruiservice = new \block_dixeo_designer\service\designer_submission_ui_service();
         $filecontext = $designeruiservice->get_file_context($jobid, (int) $USER->id);
         $context = \block_dixeo_designer\service\submission\render_helper::build_prompt_context(
+            $OUTPUT,
             $jobid,
             $coursedescription,
             \block_dixeo_designer\service\course_template_helper::get_selected_course_template(),

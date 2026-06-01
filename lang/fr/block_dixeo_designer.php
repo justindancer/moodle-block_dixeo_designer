@@ -25,7 +25,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$string['attachfile'] = 'Joindre un document source';
+$string['attachfile'] = 'Joignez des documents sources qui seront utilisés pour générer le cours. Les fichiers sources sont limités à 50 Mo au total et 20 Mo par fichier.';
 $string['blocktitle'] = 'Concepteur de Cours Dixeo';
 $string['toggle_tooltip_hide'] = 'Masquer le bloc de génération';
 $string['toggle_tooltip_show'] = 'Afficher le bloc de génération';

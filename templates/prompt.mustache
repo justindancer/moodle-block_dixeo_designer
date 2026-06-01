@@ -36,13 +36,9 @@
             <label for="temp_course_files" class="label_course_files" title="{{#str}} attachfile, block_dixeo_designer {{/str}}">
                 <i class="fa fa-paperclip fa-2x"></i>
             </label>
-            {{#has_template_options}}
-            <select id="templateid" name="templateid" class="custom-select" title="{{#str}} coursetemplate, block_dixeo_designer {{/str}}">
-                {{#template_options}}
-                    <option value="{{value}}"{{#selected}} selected{{/selected}}>{{label}}</option>
-                {{/template_options}}
-            </select>
-            {{/has_template_options}}
+            {{#has_template_selector}}
+            {{> block_dixeo_designer/template_selector }}
+            {{/has_template_selector}}
             <div id="file_names" class="mt-2{{^hasFiles}} d-none{{/hasFiles}}" data-uploading-text="{{uploading_files}}">{{> block_dixeo_designer/filenames }}</div>
             <div class="prompt-actions">
                 {{^hide_generate_course}}

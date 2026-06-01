@@ -43,12 +43,7 @@ final class course_template_helper_test extends advanced_testcase {
 
         set_config('coursetemplate', 'tpl-default', 'block_dixeo_designer');
 
-        $mockservice = $this->createMock(course_template_service::class);
-        $mockservice->method('is_configured')->willReturn(true);
-        $mockservice->method('get_cached_choices')->willReturn([
-            'tpl-default' => 'Default template',
-            'tpl-alt' => 'Alternative template',
-        ]);
+        $mockservice = $this->mock_templates_service();
         service_factory::set_test_course_template_service($mockservice);
 
         $options = course_template_helper::get_course_template_options('');
@@ -66,12 +61,7 @@ final class course_template_helper_test extends advanced_testcase {
 
         set_config('coursetemplate', 'tpl-default', 'block_dixeo_designer');
 
-        $mockservice = $this->createMock(course_template_service::class);
-        $mockservice->method('is_configured')->willReturn(true);
-        $mockservice->method('get_cached_choices')->willReturn([
-            'tpl-default' => 'Default template',
-            'tpl-alt' => 'Alternative template',
-        ]);
+        $mockservice = $this->mock_templates_service();
         service_factory::set_test_course_template_service($mockservice);
 
         $options = course_template_helper::get_course_template_options('tpl-alt');
@@ -82,5 +72,64 @@ final class course_template_helper_test extends advanced_testcase {
 
         $this->assertCount(1, $selected);
         $this->assertSame('tpl-alt', $selected[0]['value']);
+    }
+
+    public function test_build_course_template_choicelist_includes_descriptions(): void {
+        $this->resetAfterTest(true);
+
+        $mockservice = $this->createMock(course_template_service::class);
+        $mockservice->method('is_configured')->willReturn(true);
+        $mockservice->method('get_cached_templates')->willReturn([
+            [
+                'id' => 'tpl-a',
+                'name' => 'Template A',
+                'description' => 'First pedagogical template.',
+            ],
+            [
+                'id' => 'tpl-b',
+                'name' => 'Template B',
+                'description' => '',
+            ],
+        ]);
+        service_factory::set_test_course_template_service($mockservice);
+
+        $choicelist = course_template_helper::build_course_template_choicelist('tpl-a');
+        $this->assertNotNull($choicelist);
+
+        global $PAGE;
+        $output = $PAGE->get_renderer('core');
+        $export = $choicelist->export_for_template($output);
+        $optionsbyvalue = [];
+        foreach ($export['options'] as $option) {
+            $optionsbyvalue[$option['value']] = $option;
+        }
+
+        $this->assertArrayHasKey('', $optionsbyvalue);
+        $this->assertArrayHasKey('tpl-a', $optionsbyvalue);
+        $this->assertSame('First pedagogical template.', $optionsbyvalue['tpl-a']['description']);
+        $this->assertTrue($optionsbyvalue['tpl-a']['selected']);
+        $this->assertNull($optionsbyvalue['tpl-b']['description']);
+    }
+
+    private function mock_templates_service(): course_template_service {
+        $mockservice = $this->createMock(course_template_service::class);
+        $mockservice->method('is_configured')->willReturn(true);
+        $mockservice->method('get_cached_templates')->willReturn([
+            [
+                'id' => 'tpl-default',
+                'name' => 'Default template',
+                'description' => '',
+            ],
+            [
+                'id' => 'tpl-alt',
+                'name' => 'Alternative template',
+                'description' => 'Alt description.',
+            ],
+        ]);
+        $mockservice->method('get_cached_choices')->willReturn([
+            'tpl-default' => 'Default template',
+            'tpl-alt' => 'Alternative template',
+        ]);
+        return $mockservice;
     }
 }

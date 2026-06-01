@@ -18,6 +18,8 @@ namespace block_dixeo_designer\service;
 
 defined('MOODLE_INTERNAL') || die();
 
+use core\output\choicelist;
+use core\output\local\dropdown\status;
 use local_dixeo\external\service_factory;
 
 /**
@@ -93,5 +95,82 @@ class course_template_helper {
         }
 
         return $result;
+    }
+
+    /**
+     * Build a choicelist for the designer prompt template selector.
+     *
+     * @param string|null $selectedtemplateid Selected template id.
+     * @return choicelist|null Null when no remote templates are available.
+     */
+    public static function build_course_template_choicelist(?string $selectedtemplateid = null): ?choicelist {
+        if ($selectedtemplateid === null || $selectedtemplateid === '') {
+            $selectedtemplateid = self::get_selected_course_template();
+        }
+
+        $service = service_factory::get_course_template_service();
+        if (!$service->is_configured()) {
+            return null;
+        }
+
+        $templates = $service->get_cached_templates();
+        if ($templates === []) {
+            return null;
+        }
+
+        $choicelist = new choicelist();
+        $choicelist->set_allow_empty(true);
+
+        $none = get_string('coursetemplate_none', 'block_dixeo_designer');
+        $nonedefinition = [];
+        if ((string) $selectedtemplateid === '') {
+            $nonedefinition['selected'] = true;
+        }
+        $choicelist->add_option('', $none, $nonedefinition);
+
+        foreach ($templates as $template) {
+            $definition = [];
+            if ($template['description'] !== '') {
+                $definition['description'] = $template['description'];
+            }
+            if ((string) $template['id'] === (string) $selectedtemplateid) {
+                $definition['selected'] = true;
+            }
+            $choicelist->add_option($template['id'], $template['name'], $definition);
+        }
+
+        return $choicelist;
+    }
+
+    /**
+     * Export Mustache context for the template choicedropdown (prompt UI).
+     *
+     * @param \core\output\renderer_base $output Renderer for templatable export.
+     * @param string|null $selectedtemplateid Selected template id.
+     * @return array|null Element context or null when no templates.
+     */
+    public static function export_template_selector(\core\output\renderer_base $output, ?string $selectedtemplateid = null): ?array {
+        $choicelist = self::build_course_template_choicelist($selectedtemplateid);
+        if ($choicelist === null) {
+            return null;
+        }
+
+        $dialog = new status(
+            $choicelist->get_selected_content($output),
+            $choicelist,
+            [
+                'extras' => ['data-form-controls' => 'templateid'],
+                'buttonsync' => true,
+                'updatestatus' => true,
+                'dialogwidth' => status::WIDTH['small'],
+            ]
+        );
+
+        return [
+            'id' => 'templateid',
+            'name' => 'templateid',
+            'select' => $choicelist->export_for_template($output),
+            'dropdown' => $dialog->export_for_template($output),
+        ];
     }
 }

@@ -25,7 +25,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$string['attachfile'] = 'Adjuntar un documento fuente';
+$string['attachfile'] = 'Adjunte documentos fuente que se utilizarán para generar el curso. Los archivos fuente están limitados a 50 MB en total y 20 MB por archivo.';
 $string['blocktitle'] = 'Diseñador de Cursos Dixeo';
 $string['toggle_tooltip_hide'] = 'Ocultar el bloque de generación';
 $string['toggle_tooltip_show'] = 'Mostrar el bloque de generación';

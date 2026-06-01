@@ -25,7 +25,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-$string['attachfile'] = 'Allega un documento sorgente';
+$string['attachfile'] = 'Allega documenti sorgente che verranno utilizzati per generare il corso. I file sorgente sono limitati a 50 MB in totale e 20 MB per file.';
 $string['blocktitle'] = 'Progettatore di Corsi Dixeo';
 $string['toggle_tooltip_hide'] = 'Nascondi il blocco di generazione';
 $string['toggle_tooltip_show'] = 'Mostra il blocco di generazione';

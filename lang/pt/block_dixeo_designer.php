@@ -114,7 +114,7 @@ $string['designer_unknown_error'] = 'Erro desconhecido';
 $string['designer_instructions_too_short'] = 'Instructions must be at least {$a->min} characters.';
 
 // File uploads.
-$string['attachfile'] = 'Anexar um documento de origem';
+$string['attachfile'] = 'Anexe documentos de origem que serão usados para gerar o curso. Os ficheiros de origem estão limitados a 50 MB no total e 20 MB por ficheiro.';
 $string['draganddrop'] = 'Arraste e largue os seus ficheiros para carregar';
 $string['removefile'] = 'Remover ficheiro';
 $string['totalsize'] = '<b>Tamanho total:</b> {$a}';

@@ -114,7 +114,7 @@ $string['designer_unknown_error'] = 'Unbekannter Fehler';
 $string['designer_instructions_too_short'] = 'Instructions must be at least {$a->min} characters.';
 
 // File uploads.
-$string['attachfile'] = 'Quelldokument anhängen';
+$string['attachfile'] = 'Quelldokumente anhängen, die zur Kursgenerierung verwendet werden. Quelldateien sind insgesamt auf 50 MB und pro Datei auf 20 MB begrenzt.';
 $string['draganddrop'] = 'Dateien zum Hochladen hierher ziehen';
 $string['removefile'] = 'Datei entfernen';
 $string['totalsize'] = '<b>Gesamtgröße:</b> {$a}';

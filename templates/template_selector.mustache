@@ -1,0 +1,43 @@
+{{!
+    @template block_dixeo_designer/template_selector
+
+    Course template choicedropdown for the designer prompt (core choicelist + dropdown/status).
+
+    Context variables required for this template:
+    * template_selector.id - select element id (templateid)
+    * template_selector.name - form field name
+    * template_selector.select - choicelist export
+    * template_selector.dropdown - dropdown/status export
+}}
+<div class="template-selector" title="{{#str}} coursetemplate, block_dixeo_designer {{/str}}">
+    <select
+        class="custom-select d-none"
+        name="{{template_selector.name}}"
+        id="{{template_selector.id}}"
+        data-region="choice-select"
+        title="{{#str}} coursetemplate, block_dixeo_designer {{/str}}"
+    >
+        {{#template_selector.select}}
+            {{#options}}
+            <option
+                value="{{value}}"
+                data-optionid="{{template_selector.id}}_{{optionuniqid}}"
+                {{#selected}}selected{{/selected}}
+                {{#disabled}}disabled{{/disabled}}
+            >
+                {{{name}}}
+            </option>
+            {{/options}}
+        {{/template_selector.select}}
+    </select>
+    {{#template_selector.dropdown}}
+        {{< core/local/dropdown/status}}
+            {{$ buttonclasses }} btn btn-outline-secondary dropdown-toggle {{/ buttonclasses }}
+        {{/ core/local/dropdown/status}}
+    {{/template_selector.dropdown}}
+</div>
+{{#js}}
+require(['core_form/choicedropdown'], function(ChoiceDropdown) {
+    ChoiceDropdown.init('{{template_selector.id}}');
+});
+{{/js}}

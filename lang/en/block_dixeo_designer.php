@@ -115,7 +115,7 @@ $string['designer_unknown_error'] = 'Unknown error';
 $string['designer_instructions_too_short'] = 'Instructions must be at least {$a->min} characters.';
 
 // File uploads.
-$string['attachfile'] = 'Attach a source document';
+$string['attachfile'] = 'Attach source documents that will be used to generate the course. Source files are limited to 50MB total, and 20MB per file.';
 $string['draganddrop'] = 'Drag and drop your files to upload';
 $string['removefile'] = 'Remove file';
 $string['totalsize'] = '<b>Total size:</b> {$a}';
