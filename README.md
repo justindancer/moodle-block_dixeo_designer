@@ -26,7 +26,7 @@ The **Dixeo Course Designer** is an AI-powered Moodle block that accelerates the
 1. Copy `dixeo_designer` to `/blocks/dixeo_designer/`
 2. Visit Site Administration > Notifications
 3. Complete the Moodle upgrade.
-4. Make sure that `Dixeo AI` has been configured with a valid Dixeo API key.
+4. Verify that **[Dixeo AI](../../../moodle-local_dixeo)** has been configured with a valid Dixeo API key.
 
 # Configuration
 
